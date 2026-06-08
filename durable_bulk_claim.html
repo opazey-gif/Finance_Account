@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="th" xml:lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>เบิกครุภัณฑ์จำนวนมาก</title>
+
+  <?!= include('Common_CSS'); ?>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+
+  <style>
+    body { background:#f8fafc; }
+
+    /* ── loader ── */
+    .loader-container {
+      position:fixed; inset:0; background:rgba(255,255,255,.93);
+      z-index:99999; display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      transition:opacity .3s,visibility .3s;
+    }
+    .loader-container.loader-hidden { opacity:0; visibility:hidden; pointer-events:none; }
+    .spinner { width:52px; height:52px; border:5px solid #f3f3f3;
+      border-top:5px solid #f97316; border-radius:50%; animation:spin .9s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── wrapper ── */
+    .page-wrap { max-width:900px; margin:0 auto; padding:1.5rem 1rem 3rem; }
+
+    /* ── gradient header card ── */
+    .hero-card {
+      background:linear-gradient(135deg,#f97316 0%,#fb923c 60%,#fbbf24 100%);
+      border-radius:1.4rem; padding:1.75rem 2rem; color:white; margin-bottom:1.5rem;
+      box-shadow:0 10px 30px rgba(249,115,22,.28);
+      display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;
+    }
+    .hero-card h3 { margin:0; font-weight:700; font-size:1.25rem; }
+    .hero-card p { margin:4px 0 0; font-size:.85rem; opacity:.88; }
+    .btn-back {
+      background:rgba(255,255,255,.22); border:1.5px solid rgba(255,255,255,.4);
+      color:white; padding:8px 16px; border-radius:10px; font-size:.84rem;
+      font-weight:600; cursor:pointer; transition:all .2s; white-space:nowrap;
+      font-family:'Prompt',sans-serif;
+    }
+    .btn-back:hover { background:rgba(255,255,255,.35); }
+
+    /* ── step pills ── */
+    .steps {
+      display:flex; align-items:center; gap:0; margin-bottom:1.5rem;
+      background:white; border-radius:1rem; padding:.6rem .8rem;
+      box-shadow:0 2px 10px rgba(0,0,0,.05); overflow-x:auto;
+    }
+    .step-item {
+      display:flex; align-items:center; gap:8px; flex:1; min-width:0;
+      padding:.4rem .5rem; border-radius:.6rem; transition:all .2s; position:relative;
+    }
+    .step-num {
+      width:28px; height:28px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-weight:700; font-size:.8rem; flex-shrink:0;
+      background:#f1f5f9; color:#94a3b8; transition:all .3s;
+    }
+    .step-lbl { font-size:.8rem; color:#94a3b8; font-weight:500; white-space:nowrap; transition:all .3s; }
+    .step-item.active .step-num { background:#f97316; color:white; box-shadow:0 4px 10px rgba(249,115,22,.35); }
+    .step-item.active .step-lbl { color:#f97316; font-weight:700; }
+    .step-item.done .step-num { background:#10b981; color:white; }
+    .step-item.done .step-lbl { color:#10b981; }
+    .step-sep { width:28px; height:2px; background:#e2e8f0; flex-shrink:0; }
+    .step-sep.done { background:#10b981; }
+
+    /* ── section card ── */
+    .sec-card {
+      background:white; border-radius:1.25rem; padding:1.5rem 1.75rem;
+      box-shadow:0 2px 12px rgba(0,0,0,.05); border:1px solid #f1f5f9;
+      margin-bottom:1.25rem;
+    }
+    .sec-title {
+      font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em;
+      color:#f97316; border-bottom:1.5px solid rgba(249,115,22,.2);
+      padding-bottom:6px; margin-bottom:1.1rem;
+      display:flex; align-items:center; gap:8px;
+    }
+    .sec-title i { font-size:.85rem; }
+
+    /* ── form ── */
+    .fg2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    @media(max-width:600px){ .fg2 { grid-template-columns:1fr; } }
+    .fg2 .fc { grid-column:1/-1; }
+    .flb { display:block; font-size:.82rem; font-weight:600; color:#374151; margin-bottom:5px; }
+    .flb .req { color:#ef4444; }
+    .fi {
+      width:100%; border:1.5px solid #e2e8f0; border-radius:10px;
+      padding:9px 13px; font-size:.87rem; font-family:'Prompt',sans-serif;
+      outline:none; transition:border-color .2s,box-shadow .2s; background:white;
+    }
+    .fi:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,115,22,.1); }
+
+    /* ── barcode area ── */
+    .scan-box {
+      border:2px dashed #e2e8f0; border-radius:1rem; padding:1.2rem;
+      transition:border-color .2s; background:#fafafa;
+    }
+    .scan-box:focus-within { border-color:#f97316; background:white; }
+    .scan-box textarea {
+      width:100%; border:none; outline:none; background:transparent;
+      font-family:monospace; font-size:.9rem; color:#1e293b;
+      resize:vertical; line-height:1.7;
+    }
+    .scan-header {
+      display:flex; align-items:center; justify-content:space-between; margin-bottom:.7rem;
+    }
+    .scan-label { font-size:.8rem; font-weight:700; color:#475569; display:flex; align-items:center; gap:6px; }
+    .scan-hint { font-size:.72rem; color:#94a3b8; }
+    .clear-btn {
+      background:#f1f5f9; border:none; border-radius:7px; padding:4px 10px;
+      font-size:.75rem; font-weight:600; color:#64748b; cursor:pointer;
+      font-family:'Prompt',sans-serif; transition:all .2s;
+    }
+    .clear-btn:hover { background:#e2e8f0; }
+
+    /* ── verify btn ── */
+    .btn-verify {
+      width:100%; padding:11px; border-radius:12px; border:none;
+      background:linear-gradient(135deg,#0ea5e9,#38bdf8); color:white;
+      font-weight:700; font-size:.95rem; font-family:'Prompt',sans-serif;
+      cursor:pointer; transition:all .2s; display:flex; align-items:center;
+      justify-content:center; gap:8px; margin-top:.9rem;
+    }
+    .btn-verify:hover { box-shadow:0 8px 20px rgba(14,165,233,.35); transform:translateY(-1px); }
+
+    /* ── result mini stats ── */
+    .result-stats {
+      display:grid; grid-template-columns:1fr 1fr 1fr; gap:.7rem; margin-bottom:1rem;
+    }
+    .rs {
+      text-align:center; border-radius:.9rem; padding:.75rem .5rem;
+      border:1.5px solid transparent;
+    }
+    .rs-all  { background:#f8fafc; border-color:#e2e8f0; }
+    .rs-ok   { background:rgba(16,185,129,.07); border-color:#6ee7b7; }
+    .rs-fail { background:rgba(239,68,68,.06); border-color:#fca5a5; }
+    .rs .rv { font-size:1.8rem; font-weight:700; line-height:1; }
+    .rs-all  .rv { color:#1e293b; }
+    .rs-ok   .rv { color:#059669; }
+    .rs-fail .rv { color:#dc2626; }
+    .rs .rl { font-size:.73rem; font-weight:600; margin-top:3px; }
+    .rs-all  .rl { color:#64748b; }
+    .rs-ok   .rl { color:#059669; }
+    .rs-fail .rl { color:#dc2626; }
+
+    /* ── verification table ── */
+    .vtbl-wrap { border:1px solid #e2e8f0; border-radius:.9rem; overflow:hidden; max-height:360px; overflow-y:auto; }
+    .vtbl-wrap table { font-size:.85rem; margin:0; width:100%; border-collapse:collapse; }
+    .vtbl-wrap thead th {
+      background:#f8fafc; padding:9px 12px; font-weight:700; font-size:.73rem;
+      text-transform:uppercase; letter-spacing:.04em; color:#475569;
+      border-bottom:2px solid #e2e8f0; position:sticky; top:0; z-index:1;
+    }
+    .vtbl-wrap tbody td { padding:8px 12px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+    .vtbl-wrap tbody tr:last-child td { border-bottom:none; }
+    .tr-ok   { } 
+    .tr-warn { background:rgba(245,158,11,.05); }
+    .tr-fail { background:rgba(239,68,68,.05); }
+
+    .sp { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:999px; font-size:.73rem; font-weight:600; }
+    .sp-ok   { background:#d1fae5; color:#065f46; }
+    .sp-warn { background:#fef3c7; color:#92400e; }
+    .sp-fail { background:#fee2e2; color:#b91c1c; }
+
+    /* ── image upload ── */
+    .img-upload-area {
+      border:2px dashed #e2e8f0; border-radius:1rem; padding:1.4rem;
+      text-align:center; cursor:pointer; transition:all .25s; background:#fafafa;
+      position:relative;
+    }
+    .img-upload-area:hover, .img-upload-area.dragover {
+      border-color:#f97316; background:rgba(249,115,22,.04);
+    }
+    .img-upload-area input[type=file] { display:none; }
+    .ul-icon { font-size:2.2rem; color:#cbd5e1; margin-bottom:6px; }
+    .ul-title { font-size:.88rem; font-weight:600; color:#64748b; margin:0; }
+    .ul-sub { font-size:.75rem; color:#94a3b8; margin-top:3px; }
+    .ul-types { font-size:.7rem; color:#cbd5e1; margin-top:4px; }
+
+    .img-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:9px; margin-top:1rem; }
+    .img-item {
+      position:relative; border-radius:10px; overflow:hidden;
+      aspect-ratio:1; border:1.5px solid #e2e8f0; background:#f8fafc;
+    }
+    .img-item img { width:100%; height:100%; object-fit:cover; cursor:pointer; }
+    .img-item .del-btn {
+      position:absolute; top:4px; right:4px; background:rgba(239,68,68,.9);
+      color:white; border:none; border-radius:6px; width:22px; height:22px;
+      font-size:.65rem; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    }
+    .img-item .del-btn:hover { background:#dc2626; }
+    .img-count { display:inline-flex; align-items:center; gap:4px;
+      background:rgba(249,115,22,.1); color:#ea580c; border-radius:6px;
+      padding:2px 9px; font-size:.73rem; font-weight:700; }
+    .upload-progress {
+      height:4px; background:#e2e8f0; border-radius:2px; overflow:hidden; margin-top:.5rem;
+    }
+    .upload-progress-bar {
+      height:100%; background:linear-gradient(90deg,#f97316,#fb923c);
+      border-radius:2px; transition:width .4s ease; width:0%;
+    }
+
+    /* lightbox */
+    .lightbox { display:none; position:fixed; inset:0; z-index:99999;
+      background:rgba(0,0,0,.88); align-items:center; justify-content:center; }
+    .lightbox.show { display:flex; }
+    .lightbox img { max-width:90vw; max-height:88vh; border-radius:.75rem;
+      box-shadow:0 25px 60px rgba(0,0,0,.5); }
+    .lightbox-close { position:absolute; top:16px; right:20px; background:rgba(255,255,255,.15);
+      border:none; color:white; width:36px; height:36px; border-radius:10px;
+      font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .lightbox-close:hover { background:rgba(255,255,255,.3); }
+
+    /* ── submit section ── */
+    .submit-bar {
+      display:flex; justify-content:space-between; align-items:center;
+      flex-wrap:wrap; gap:10px; margin-top:.8rem;
+    }
+    .btn-submit {
+      padding:11px 28px; border-radius:12px; border:none;
+      background:linear-gradient(135deg,#f97316,#fb923c); color:white;
+      font-weight:700; font-size:.95rem; font-family:'Prompt',sans-serif;
+      cursor:pointer; transition:all .2s; display:flex; align-items:center; gap:8px;
+    }
+    .btn-submit:hover { box-shadow:0 8px 20px rgba(249,115,22,.35); transform:translateY(-1px); }
+    .btn-submit:disabled {
+      background:linear-gradient(135deg,#e2e8f0,#cbd5e1); color:#94a3b8;
+      cursor:not-allowed; transform:none; box-shadow:none;
+    }
+    .btn-reset {
+      padding:10px 18px; border-radius:12px; border:1.5px solid #e2e8f0;
+      background:white; color:#64748b; font-weight:600; font-size:.87rem;
+      font-family:'Prompt',sans-serif; cursor:pointer; transition:all .2s;
+    }
+    .btn-reset:hover { border-color:#94a3b8; }
+
+    /* result hidden */
+    #resultSection { display:none; }
+  </style>
+</head>
+<body>
+
+<?!= include('Common_Navbar'); ?>
+
+<!-- loader -->
+<div id="pageLoader" class="loader-container">
+  <div class="spinner"></div>
+  <p class="mt-3 fw-bold text-secondary" style="font-size:.88rem" id="loaderText">กำลังโหลดข้อมูลครุภัณฑ์...</p>
+</div>
+
+<!-- lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLB()">
+  <button class="lightbox-close" onclick="closeLB()"><i class="fas fa-times"></i></button>
+  <img id="lbImg" src="" alt="">
+</div>
+
+<div class="page-wrap">
+
+  <!-- hero -->
+  <div class="hero-card">
+    <div>
+      <h3><i class="fas fa-layer-group me-2"></i>เบิกครุภัณฑ์ / วัสดุ จำนวนมาก</h3>
+      <p>รองรับการ Scan บาร์โค้ด · วาง ID จาก Excel · และแนบหลักฐานภาพ</p>
+    </div>
+    <button class="btn-back" onclick="navigateTo('durable_dashboard')">
+      <i class="fas fa-arrow-left me-1"></i> กลับหน้าหลัก
+    </button>
+  </div>
+
+  <!-- step indicator -->
+  <div class="steps" id="stepsBar">
+    <div class="step-item active" id="step1">
+      <div class="step-num">1</div>
+      <div class="step-lbl">ข้อมูลผู้เบิก</div>
+    </div>
+    <div class="step-sep" id="sep1"></div>
+    <div class="step-item" id="step2">
+      <div class="step-num">2</div>
+      <div class="step-lbl">กรอกรหัส</div>
+    </div>
+    <div class="step-sep" id="sep2"></div>
+    <div class="step-item" id="step3">
+      <div class="step-num">3</div>
+      <div class="step-lbl">แนบหลักฐาน</div>
+    </div>
+    <div class="step-sep" id="sep3"></div>
+    <div class="step-item" id="step4">
+      <div class="step-num">4</div>
+      <div class="step-lbl">ตรวจสอบ &amp; ยืนยัน</div>
+    </div>
+  </div>
+
+  <!-- ────────── SECTION 1: ข้อมูลผู้เบิก ────────── -->
+  <div class="sec-card">
+    <div class="sec-title"><i class="fas fa-user-circle"></i> ส่วนที่ 1 — ข้อมูลผู้เบิก / ยืม</div>
+    <div class="fg2">
+      <div>
+        <label class="flb">วันที่เบิก <span class="req">*</span></label>
+        <input type="date" id="dateInput" class="fi" required>
+      </div>
+      <div>
+        <label class="flb">ส่วนงาน / แผนก <span class="req">*</span></label>
+        <select id="department" class="fi" required>
+          <option value="" disabled selected>เลือกแผนก...</option>
+          <option>OED</option><option>OSP</option><option>OM</option>
+          <option>Academy</option><option>OJI</option><option>OBR</option>
+          <option>EXPO</option><option>OPC</option><option>KCS</option>
+          <option>BSM</option><option>IT</option><option>อื่นๆ</option>
+        </select>
+      </div>
+      <div>
+        <label class="flb">ชื่อผู้ขอเบิก <span class="req">*</span></label>
+        <input type="text" id="fullname" class="fi" placeholder="ระบุชื่อ-นามสกุล" required>
+      </div>
+      <div>
+        <label class="flb">ประเภทการขอ <span class="req">*</span></label>
+        <select id="claimType" class="fi">
+          <option value="เบิก">เบิก (ไม่ต้องคืน)</option>
+          <option value="ยืม">ยืม (ต้องคืน)</option>
+        </select>
+      </div>
+      <div class="fc">
+        <label class="flb">จุดประสงค์ / สถานที่นำไปใช้ <span class="req">*</span></label>
+        <input type="text" id="locationUse" class="fi" placeholder="เช่น ใช้จัดงานประชุมชั้น 2 วันที่ 20 พ.ค. 2568" required>
+      </div>
+      <div id="returnDateWrap" style="display:none;">
+        <label class="flb">วันที่กำหนดคืน</label>
+        <input type="date" id="returnDate" class="fi">
+      </div>
+      <div>
+        <label class="flb">เบอร์ติดต่อผู้เบิก</label>
+        <input type="tel" id="contactTel" class="fi" placeholder="08X-XXX-XXXX">
+      </div>
+    </div>
+  </div>
+
+  <!-- ────────── SECTION 2: กรอกรหัส ────────── -->
+  <div class="sec-card">
+    <div class="sec-title"><i class="fas fa-barcode"></i> ส่วนที่ 2 — กรอกรหัสครุภัณฑ์ / วัสดุ</div>
+
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:.8rem;padding:.75rem 1rem;margin-bottom:1rem;font-size:.82rem;color:#92400e;display:flex;gap:8px;align-items:flex-start;">
+      <i class="fas fa-lightbulb" style="margin-top:2px;color:#f59e0b;"></i>
+      <span>สามารถ <strong>สแกนบาร์โค้ด</strong> จากเครื่องยิง หรือ <strong>วางรหัสจาก Excel</strong> ได้เลย (1 บรรทัด = 1 รหัส) ระบบจะตัดรหัสซ้ำออกให้อัตโนมัติ</span>
+    </div>
+
+    <div class="scan-box">
+      <div class="scan-header">
+        <span class="scan-label"><i class="fas fa-keyboard"></i> กล่องรับรหัสครุภัณฑ์</span>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span class="scan-hint" id="lineCount">0 รายการ</span>
+          <button class="clear-btn" onclick="clearScan()"><i class="fas fa-trash-alt me-1"></i>ล้าง</button>
+        </div>
+      </div>
+      <textarea id="bulkIds" rows="8"
+        placeholder="ยธ.สธท.7110-002-0001/56&#10;ยธ.สธท.7110-001-0007/57&#10;หรือสแกนบาร์โค้ดที่นี่..."
+        oninput="countLines()" autofocus></textarea>
+    </div>
+
+    <button class="btn-verify" onclick="verifyIds()">
+      <i class="fas fa-search-plus"></i>
+      <span>ตรวจสอบรหัสทั้งหมด</span>
+      <span id="verifyBadge" style="background:rgba(255,255,255,.25);border-radius:6px;padding:2px 8px;font-size:.78rem;" class="d-none" id="verifyBadge">0</span>
+    </button>
+  </div>
+
+  <!-- ────────── SECTION 3: แนบรูปภาพ ────────── -->
+  <div class="sec-card">
+    <div class="sec-title">
+      <i class="fas fa-images"></i> ส่วนที่ 3 — แนบรูปภาพหลักฐาน
+      <span class="img-count" id="imgCountBadge" style="margin-left:auto;">
+        <i class="fas fa-images"></i> 0 ภาพ
+      </span>
+    </div>
+
+    <div class="img-upload-area" id="uploadArea"
+      onclick="document.getElementById('imgFileInput').click()"
+      ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+      <input type="file" id="imgFileInput" multiple accept="image/*" onchange="handleFiles(this.files)">
+      <div class="ul-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+      <p class="ul-title">คลิก หรือ ลากรูปภาพมาวางที่นี่</p>
+      <p class="ul-sub">แนบภาพหลักฐาน เช่น ใบเสร็จ, ภาพสินค้า, ภาพบริเวณจัดเก็บ</p>
+      <p class="ul-types">รองรับ JPG · PNG · WEBP · GIF · ไม่เกิน 10 MB/ภาพ</p>
+    </div>
+    <div class="upload-progress"><div class="upload-progress-bar" id="uploadBar"></div></div>
+    <div class="img-grid" id="imgGrid"></div>
+  </div>
+
+  <!-- ────────── SECTION 4: ผลการตรวจสอบ (hidden until verified) ────────── -->
+  <div id="resultSection">
+    <div class="sec-card">
+      <div class="sec-title"><i class="fas fa-clipboard-check"></i> ส่วนที่ 4 — ผลการตรวจสอบ &amp; ยืนยันการเบิก</div>
+
+      <div class="result-stats">
+        <div class="rs rs-all">
+          <div class="rv" id="cntTotal">0</div>
+          <div class="rl">อ่านได้ทั้งหมด</div>
+        </div>
+        <div class="rs rs-ok">
+          <div class="rv" id="cntOk">0</div>
+          <div class="rl">พร้อมเบิก ✔</div>
+        </div>
+        <div class="rs rs-fail">
+          <div class="rv" id="cntFail">0</div>
+          <div class="rl">มีปัญหา ✘</div>
+        </div>
+      </div>
+
+      <div class="vtbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>รหัส</th>
+              <th>ชื่อรายการ</th>
+              <th>สถานะระบบ</th>
+              <th>ผล</th>
+            </tr>
+          </thead>
+          <tbody id="verifyTbody"></tbody>
+        </table>
+      </div>
+
+      <div class="submit-bar mt-3">
+        <button class="btn-reset" onclick="resetAll()">
+          <i class="fas fa-redo me-1"></i>เริ่มใหม่
+        </button>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span id="submitNote" style="font-size:.8rem;color:#94a3b8;"></span>
+          <button class="btn-submit" id="btnSubmit" disabled onclick="submitClaim()">
+            <i class="fas fa-check-circle"></i>
+            ยืนยันการเบิก (<span id="submitCount">0</span> รายการ)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page-wrap -->
+
+<?!= include('Common_JS'); ?>
+<script>
+/* ============================================================
+   STATE
+============================================================ */
+let masterData = {}; // { "id": { name, status } }
+let validItems = []; // items that passed verification
+let pendingImgs = []; // { dataUrl, name, base64 }
+
+/* ============================================================
+   INIT
+============================================================ */
+document.addEventListener('DOMContentLoaded', function () {
+  document.getElementById('dateInput').valueAsDate = new Date();
+  loadMaster();
+
+  // Show/hide return date based on claim type
+  document.getElementById('claimType').addEventListener('change', function () {
+    document.getElementById('returnDateWrap').style.display =
+      this.value === 'ยืม' ? 'block' : 'none';
+  });
+});
+
+function loadMaster() {
+  if (typeof google !== 'undefined' && google.script) {
+    google.script.run
+      .withSuccessHandler(function (data) {
+        masterData = data;
+        hideLoader();
+      })
+      .withFailureHandler(function () {
+        showToast('warning', 'โหลดฐานข้อมูลไม่สำเร็จ ใช้ข้อมูลสำรอง');
+        masterData = getMockMaster();
+        hideLoader();
+      })
+      .getAllEquipmentMasterData();
+  } else {
+    masterData = getMockMaster();
+    setTimeout(hideLoader, 600);
+  }
+}
+
+function getMockMaster() {
+  return {
+    'ยธ.สธท.7110-002-0001/56': { name: 'เก้าอี้ทำงานผู้บริหาร บุหนังแท้', status: 'ปกติ' },
+    'ยธ.สธท.7110-001-0007/57': { name: '(F-10.1) โต๊ะ Training', status: 'ปกติ' },
+    'ยธ.สธท.7110-001-0148/57': { name: '(F-31) โต๊ะทำงาน ED', status: 'ปกติ' },
+    'ยธ.สธท.7110-001-0005/57': { name: '(F-10) โต๊ะวิทยากร', status: 'รอบริจาค' },
+    '1.41115E7': { name: 'กระดาษถ่ายเอกสาร A4', status: 'ปกติ' },
+    '3.12016E7': { name: 'เทปใส 3/4 นิ้ว', status: 'ปกติ' },
+    'ยธ.สธท.7110-002-0089/57': { name: '(F-18) เก้าอี้อาร์มแชร์', status: 'เบิก/ยืม' },
+  };
+}
+
+/* ============================================================
+   SCAN BOX
+============================================================ */
+function countLines() {
+  const lines = getUniqueIds().length;
+  document.getElementById('lineCount').textContent = lines + ' รายการ';
+  updateStepState(lines > 0 ? 2 : 1);
+}
+
+function clearScan() {
+  document.getElementById('bulkIds').value = '';
+  countLines();
+  document.getElementById('resultSection').style.display = 'none';
+}
+
+function getUniqueIds() {
+  const raw = document.getElementById('bulkIds').value;
+  return [...new Set(
+    raw.split(/[\n,]+/).map(s => s.trim()).filter(s => s)
+  )];
+}
+
+/* ============================================================
+   VERIFY
+============================================================ */
+function verifyIds() {
+  const ids = getUniqueIds();
+  if (!ids.length) {
+    showToast('warning', 'กรุณากรอกหรือสแกนรหัสก่อนตรวจสอบ');
+    return;
+  }
+  if (!validateForm1()) return;
+
+  let okCount = 0, failCount = 0;
+  validItems = [];
+  let rows = '';
+
+  ids.forEach((id, i) => {
+    const eq = masterData[id];
+    let cls = '', icon = '', pill = '', canClaim = false;
+
+    if (!eq) {
+      cls = 'tr-fail';
+      icon = '<i class="fas fa-times-circle text-danger"></i>';
+      pill = '<span class="sp sp-fail">ไม่พบในระบบ</span>';
+      failCount++;
+    } else if (eq.status === 'ปกติ' || eq.status === 'ว่าง') {
+      cls = 'tr-ok';
+      icon = '<i class="fas fa-check-circle text-success"></i>';
+      pill = '<span class="sp sp-ok">พร้อมเบิก</span>';
+      canClaim = true; okCount++;
+      validItems.push({ id, name: eq.name });
+    } else {
+      cls = 'tr-warn';
+      icon = '<i class="fas fa-exclamation-triangle text-warning"></i>';
+      pill = `<span class="sp sp-warn">${eq.status}</span>`;
+      failCount++;
+    }
+
+    rows += `<tr class="${cls}">
+      <td style="color:#94a3b8;font-size:.75rem;">${i + 1}</td>
+      <td style="font-family:monospace;font-size:.82rem;font-weight:600;">${id}</td>
+      <td style="font-size:.83rem;">${eq ? eq.name : '—'}</td>
+      <td>${pill}</td>
+      <td>${icon}</td>
+    </tr>`;
+  });
+
+  document.getElementById('cntTotal').textContent = ids.length;
+  document.getElementById('cntOk').textContent    = okCount;
+  document.getElementById('cntFail').textContent  = failCount;
+  document.getElementById('verifyTbody').innerHTML = rows;
+  document.getElementById('resultSection').style.display = 'block';
+
+  const btn = document.getElementById('btnSubmit');
+  document.getElementById('submitCount').textContent = okCount;
+  btn.disabled = okCount === 0;
+
+  const note = document.getElementById('submitNote');
+  if (failCount > 0 && okCount > 0)
+    note.textContent = `⚠️ จะเบิกเฉพาะ ${okCount} รายการที่ผ่านเท่านั้น`;
+  else if (okCount === 0)
+    note.textContent = '❌ ไม่มีรายการที่สามารถเบิกได้';
+  else
+    note.textContent = `✔ ทุกรายการพร้อมเบิก`;
+
+  updateStepState(failCount === 0 && okCount > 0 ? 4 : 3);
+
+  document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ============================================================
+   FORM VALIDATION
+============================================================ */
+function validateForm1() {
+  const date  = document.getElementById('dateInput').value;
+  const dept  = document.getElementById('department').value;
+  const name  = document.getElementById('fullname').value.trim();
+  const loc   = document.getElementById('locationUse').value.trim();
+  if (!date || !dept || !name || !loc) {
+    showToast('error', 'กรุณากรอกข้อมูลผู้เบิกให้ครบถ้วน (ส่วนที่ 1)');
+    document.querySelector('.sec-card').scrollIntoView({ behavior: 'smooth' });
+    return false;
+  }
+  return true;
+}
+
+/* ============================================================
+   IMAGE UPLOAD
+============================================================ */
+function handleFiles(files) {
+  const MAX = 10 * 1024 * 1024; // 10MB
+  const bar = document.getElementById('uploadBar');
+  const total = files.length;
+  let done = 0;
+
+  Array.from(files).forEach(file => {
+    if (!file.type.startsWith('image/')) {
+      showToast('warning', `ไฟล์ "${file.name}" ไม่ใช่ภาพ`); done++; return;
+    }
+    if (file.size > MAX) {
+      showToast('warning', `"${file.name}" ใหญ่เกิน 10 MB`); done++; return;
+    }
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      pendingImgs.push({ dataUrl: e.target.result, name: file.name });
+      done++;
+      bar.style.width = Math.round((done / total) * 100) + '%';
+      renderImgGrid();
+      updateImgCount();
+      if (done === total) {
+        setTimeout(() => { bar.style.width = '0%'; }, 800);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('imgFileInput').value = '';
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('uploadArea').classList.add('dragover');
+}
+function handleDragLeave(e) {
+  document.getElementById('uploadArea').classList.remove('dragover');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadArea').classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+}
+
+function renderImgGrid() {
+  const grid = document.getElementById('imgGrid');
+  grid.innerHTML = pendingImgs.map((img, i) => `
+    <div class="img-item">
+      <img src="${img.dataUrl}" alt="${img.name}" onclick="openLB('${img.dataUrl}')">
+      <button class="del-btn" onclick="removeImg(${i});event.stopPropagation()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  `).join('');
+}
+
+function removeImg(idx) {
+  pendingImgs.splice(idx, 1);
+  renderImgGrid();
+  updateImgCount();
+}
+
+function updateImgCount() {
+  document.getElementById('imgCountBadge').innerHTML =
+    `<i class="fas fa-images"></i> ${pendingImgs.length} ภาพ`;
+  if (pendingImgs.length > 0) updateStepState(Math.max(currentStep, 3));
+}
+
+/* ============================================================
+   STEP INDICATOR
+============================================================ */
+let currentStep = 1;
+function updateStepState(step) {
+  currentStep = step;
+  for (let i = 1; i <= 4; i++) {
+    const el  = document.getElementById('step' + i);
+    const sep = document.getElementById('sep' + i);
+    if (i < step) {
+      el.className  = 'step-item done';
+      if (sep) sep.className = 'step-sep done';
+    } else if (i === step) {
+      el.className  = 'step-item active';
+      if (sep) sep.className = 'step-sep';
+    } else {
+      el.className  = 'step-item';
+      if (sep) sep.className = 'step-sep';
+    }
+  }
+}
+
+/* ============================================================
+   SUBMIT
+============================================================ */
+function submitClaim() {
+  if (!validateForm1()) return;
+  if (!validItems.length) { showToast('error','ไม่มีรายการที่สามารถเบิกได้'); return; }
+
+  Swal.fire({
+    title: 'ยืนยันการเบิก',
+    html: `เบิก <strong>${validItems.length} รายการ</strong> โดย <strong>${document.getElementById('fullname').value}</strong><br><small style="color:#64748b;">รูปภาพ ${pendingImgs.length} ภาพ จะถูกบันทึกพร้อมกัน</small>`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#f97316',
+    cancelButtonColor: '#94a3b8',
+    confirmButtonText: 'ยืนยัน ✔',
+    cancelButtonText: 'ยกเลิก',
+  }).then(r => {
+    if (!r.isConfirmed) return;
+    doSubmit();
+  });
+}
+
+function doSubmit() {
+  showLoader('กำลังบันทึกข้อมูล กรุณารอสักครู่...');
+
+  const formData = {
+    date:      document.getElementById('dateInput').value,
+    department: document.getElementById('department').value,
+    requester: document.getElementById('fullname').value,
+    claimType: document.getElementById('claimType').value,
+    location:  document.getElementById('locationUse').value,
+    returnDate: document.getElementById('returnDate').value || '',
+    tel:       document.getElementById('contactTel').value || '',
+    imageCount: pendingImgs.length,
+  };
+
+  // Convert images to base64 strings for GAS
+  const imageData = pendingImgs.map(img => ({
+    name: img.name,
+    base64: img.dataUrl.split(',')[1] || '',
+    mimeType: img.dataUrl.split(';')[0].replace('data:','') || 'image/jpeg',
+  }));
+
+  if (typeof google !== 'undefined' && google.script) {
+    google.script.run
+      .withSuccessHandler(function (res) {
+        hideLoader();
+        Swal.fire({
+          icon: 'success', title: 'บันทึกสำเร็จ!',
+          html: `บันทึกการเบิก <strong>${validItems.length} รายการ</strong> เรียบร้อยแล้ว`,
+          confirmButtonColor: '#f97316',
+        }).then(() => navigateTo('durable_dashboard'));
+      })
+      .withFailureHandler(function (e) {
+        hideLoader();
+        Swal.fire('เกิดข้อผิดพลาด', e.message || e.toString(), 'error');
+      })
+      .saveBulkEquipmentClaim(formData, validItems, imageData);
+  } else {
+    // Preview simulation
+    setTimeout(() => {
+      hideLoader();
+      Swal.fire({
+        icon: 'success', title: 'จำลองการบันทึกสำเร็จ',
+        html: `ผู้เบิก: <strong>${formData.requester}</strong><br>
+               รายการ: <strong>${validItems.length} ชิ้น</strong><br>
+               รูปภาพ: <strong>${imageData.length} ภาพ</strong>`,
+        confirmButtonColor: '#f97316',
+      });
+    }, 1200);
+  }
+}
+
+/* ============================================================
+   RESET
+============================================================ */
+function resetAll() {
+  Swal.fire({
+    title: 'เริ่มใหม่?', text: 'ข้อมูลที่กรอกไว้จะถูกล้างทั้งหมด',
+    icon: 'warning', showCancelButton: true,
+    confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8',
+    confirmButtonText: 'เริ่มใหม่', cancelButtonText: 'ยกเลิก'
+  }).then(r => {
+    if (!r.isConfirmed) return;
+    document.getElementById('bulkIds').value   = '';
+    document.getElementById('fullname').value  = '';
+    document.getElementById('locationUse').value = '';
+    document.getElementById('department').value = '';
+    document.getElementById('contactTel').value = '';
+    document.getElementById('dateInput').valueAsDate = new Date();
+    pendingImgs = []; validItems = [];
+    renderImgGrid(); updateImgCount();
+    countLines();
+    document.getElementById('resultSection').style.display = 'none';
+    updateStepState(1);
+  });
+}
+
+/* ============================================================
+   LIGHTBOX
+============================================================ */
+function openLB(src) {
+  document.getElementById('lbImg').src = src;
+  document.getElementById('lightbox').classList.add('show');
+}
+function closeLB() {
+  document.getElementById('lightbox').classList.remove('show');
+}
+
+/* ============================================================
+   LOADER / TOAST / NAVIGATE
+============================================================ */
+function showLoader(msg) {
+  const l = document.getElementById('pageLoader');
+  if (msg) document.getElementById('loaderText').textContent = msg;
+  if (l) l.classList.remove('loader-hidden');
+}
+function hideLoader() {
+  const l = document.getElementById('pageLoader');
+  if (l) l.classList.add('loader-hidden');
+}
+function showToast(icon, title) {
+  if (typeof Swal !== 'undefined') {
+    Swal.mixin({
+      toast: true, position: 'top-end', showConfirmButton: false,
+      timer: 3000, timerProgressBar: true
+    }).fire({ icon, title });
+  }
+}
+function navigateTo(page) {
+  showLoader('กำลังเปลี่ยนหน้า...');
+  if (typeof google !== 'undefined' && google.script) {
+    google.script.run
+      .withSuccessHandler(html => { document.open(); document.write(html); document.close(); })
+      .withFailureHandler(e => {
+        hideLoader();
+        Swal.fire('ข้อผิดพลาด', e.toString(), 'error');
+      })
+      .loadHtmlPage(page);
+  } else {
+    console.log('Navigate:', page);
+    setTimeout(hideLoader, 500);
+  }
+}
+</script>
+</body>
+</html>
