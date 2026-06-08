@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>บันทึกแจ้งซ่อม - ระบบวิศวกรรมอาคาร</title>
+    
+    <?!= include('Common_CSS'); ?>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/airbnb.css">
+
+<style>
+  body {
+    font-family: 'Prompt', sans-serif;
+    background-color: #f8fafc;
+    color: #334155;
+  }
+  .btn-close-modal:hover {
+    color: white;
+    transform: rotate(90deg);
+  }
+</style>
+</head>
+<body class="scrollable-body">
+
+    <?!= include('Common_Navbar'); ?>
+
+    
+    <div id="pageLoader" class="loader-container" style="display: none;">
+        <div class="spinner"></div>
+        <div class="mt-3 fw-bold text-secondary">กำลังโหลด...</div>
+    </div>
+
+
+
+<div class="container py-4" style="max-width: 900px;">
+  
+  <div class="modal-card bg-white d-flex flex-column w-100">
+      
+    <div class="header-gradient d-flex justify-content-between align-items-center">
+      <div>
+        <h4 class="mb-0 fw-bold d-flex align-items-center gap-2" style="font-size: 1.25rem;">
+          <span>📝</span> ฟอร์มบันทึกแจ้งซ่อม / ผลการทำ PM
+        </h4>
+        <p id="modalTaskName" class="mb-0 mt-1" style="color: rgba(255,255,255,0.9); font-size: 0.85rem; font-weight: 300;"></p>
+      </div>
+    </div>
+
+    <div class="p-4" style="background-color: #f8fafc; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+      <form id="pmForm">
+            
+          <div class="form-section">
+            <h5 class="section-title title-blue">
+              <span class="badge-number badge-blue">1</span> ข้อมูลระบบและอุปกรณ์
+            </h5>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">🏢 ระบบ</label>
+                <select id="sys1" onchange="onSystemChange()" class="form-select bg-white">
+                  <option value="">-- เลือกระบบ --</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">⚙️ เครื่องจักร</label>
+                <select id="sys2" onchange="onMachineChange()" class="form-select bg-white">
+                  <option value="">-- เลือกเครื่องจักร --</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">🔧 เครื่องจักรย่อย</label>
+                <select id="sys3" onchange="onSubMachineChange()" class="form-select bg-white">
+                  <option value="">-- เลือกเครื่องจักรย่อย --</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">🔩 ระบบประกอบเครื่องจักร</label>
+                <select id="sys4" class="form-select bg-white">
+                  <option value="">-- เลือกระบบประกอบเครื่องจักร --</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h5 class="section-title title-yellow">
+              <span class="badge-number badge-yellow">2</span> ข้อมูลการปฏิบัติงาน
+            </h5>
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                <label class="form-label">🔄 รอบการบำรุงรักษา</label>
+                <select id="f_cycle" class="form-select cursor-pointer">
+                  <option value="" disabled selected>เลือกรอบ...</option>
+                  <option value="รายวัน (Daily)">รายวัน (Daily)</option>
+                  <option value="รายสัปดาห์ (Weekly)">รายสัปดาห์ (Weekly)</option>
+                  <option value="รายเดือน (Monthly)">รายเดือน (Monthly)</option>
+                  <option value="ราย 3 เดือน">ราย 3 เดือน</option>
+                  <option value="ราย 6 เดือน">ราย 6 เดือน</option>
+                  <option value="รายปี">รายปี</option>
+                  <option value="Call Service (รายครั้ง)">Call Service (รายครั้ง)</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">👥 ประเภทผู้ปฏิบัติงาน</label>
+                <select id="f_workerType" class="form-select cursor-pointer">
+                  <option value="" disabled selected>เลือกประเภท...</option>
+                  <option value="ฝ่ายวิศวกรรม LPP">ฝ่ายวิศวกรรม LPP</option>
+                  <option value="ผู้รับเหมาสัญญาจ้าง (MA)">ผู้รับเหมาสัญญาจ้าง (MA)</option>
+                  <option value="ผู้รับเหมาจ้างพิเศษ (รายครั้ง)">ผู้รับเหมาจ้างพิเศษ (รายครั้ง)</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">👤 ชื่อผู้ปฏิบัติงาน</label>
+                <input type="text" id="f_workerName" class="form-control">
+              </div>
+            </div>
+            
+            <div class="inner-box row g-3">
+              <div class="col-md-6">
+                <label class="form-label">📅 วันที่เริ่มปฏิบัติงาน</label>
+                <input type="date" id="f_startDate" class="form-control cursor-text">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">⏱️ เวลาที่เริ่ม</label>
+                <input type="time" id="f_startTime" class="form-control cursor-text">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h5 class="section-title title-orange">
+              <span class="badge-number badge-orange">3</span> รายละเอียดการซ่อมบำรุง
+            </h5>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">📋 รายละเอียดการบำรุงรักษา</label>
+                <textarea id="f_details" rows="2" class="form-control" style="resize: none;"></textarea>
+              </div>
+              <div class="col-12">
+                <label class="form-label">⚠️ สาเหตุความผิดปกติ</label>
+                <input type="text" id="f_cause" class="form-control">
+              </div>
+              <div class="col-12">
+                <label class="form-label">🛡️ วิธีการป้องกัน</label>
+                <input type="text" id="f_prevention" class="form-control">
+              </div>
+              
+              <div class="col-12">
+                <div class="inner-box row g-3" style="background-color: #fff7ed; border-color: #ffedd5;">
+                  <div class="col-md-6">
+                    <label class="form-label">📦 มีการเปลี่ยนอะไหล่หรือไม่?</label>
+                    <select id="f_hasSparePart" class="form-select cursor-pointer">
+                      <option value="ไม่มี">ไม่มี</option>
+                      <option value="มี">มี</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">💸 ราคา</label>
+                    <div class="input-group">
+                      <input type="number" id="f_price" class="form-control" placeholder="0.00" min="0">
+                      <span class="input-group-text bg-white">บาท</span>
+                    </div>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">📝 รายละเอียดอะไหล่</label>
+                    <input type="text" id="f_spareDetails" class="form-control" placeholder="ระบุชื่อหรือรหัสอะไหล่">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+          <button type="button" onclick="navigateTo('pm_dashboard')" class="btn btn-light border px-4" style="font-weight: 500;">ยกเลิก</button>
+          <button type="button" id="btnSavePM" onclick="submitPMRepair()" class="btn-save d-flex align-items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-floppy" viewBox="0 0 16 16">
+              <path d="M11 2H9v3h2z"/>
+              <path d="M1.5 0h11.586a1.5 1.5 0 0 1 1.06.44l1.415 1.414A1.5 1.5 0 0 1 16 2.914V14.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 14.5v-13A1.5 1.5 0 0 1 1.5 0M1 1.5v13a.5.5 0 0 0 .5.5H2v-4.5A1.5 1.5 0 0 1 3.5 9h9a1.5 1.5 0 0 1 1.5 1.5V15h.5a.5.5 0 0 0 .5-.5V2.914a.5.5 0 0 0-.146-.353l-1.415-1.415A.5.5 0 0 0 13.086 1H13v4.5A1.5 1.5 0 0 1 11.5 7h-7A1.5 1.5 0 0 1 3 5.5V1H1.5a.5.5 0 0 0-.5.5m3 4a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5V1H4zM3 15h10v-4.5a.5.5 0 0 0-.5-.5h-9a.5.5 0 0 0-.5.5z"/>
+            </svg>
+            บันทึกข้อมูล
+          </button>
+        </div>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
+
+<script>
+  // โค้ดสำหรับตกแต่งช่องวันที่
+  document.addEventListener('DOMContentLoaded', function() {
+    flatpickr("#f_startDate", {
+      altInput: true,
+      altFormat: "d/m/Y",    // [รูปแบบที่แสดงให้คนใช้งานเห็น] วัน/เดือน/ปี
+      dateFormat: "Y-m-d",   // [รูปแบบที่ซ่อนไว้ส่งให้ระบบ] ปี-เดือน-วัน (ป้องกันระบบเดิมรวน)
+      locale: "th",          // ใช้ภาษาไทย
+      allowInput: true
+    });
+  });
+</script>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ตัวแปรเก็บข้อมูล Dropdown ที่ดึงมาจาก Sheet
+  let pmDropdownData = {};
+
+  function initCascadingDropdowns() {
+    const sys1 = document.getElementById('sys1');
+    if (sys1) sys1.innerHTML = '<option value="">⏳ กำลังโหลดข้อมูล...</option>';    
+
+    google.script.run
+      .withSuccessHandler(function(data) {
+        pmDropdownData = data || {};
+        populateSystemDropdown();
+      })
+      .withFailureHandler(function(error) {
+        alert("โหลดข้อมูล Dropdown ไม่สำเร็จ: " + (error.message || error));
+      })
+      .getDropdownData();
+  }
+
+  function populateSystemDropdown() {
+    const sys1 = document.getElementById('sys1');
+    if (!sys1) return;
+
+    sys1.innerHTML = '<option value="">-- เลือกระบบ --</option>';
+
+    for (let system in pmDropdownData) {
+      if (system) {
+        sys1.innerHTML += `<option value="${system}">${system}</option>`;
+      }
+    }
+  }
+
+  function onSystemChange() {
+    const sys1Val = document.getElementById('sys1').value;
+    const sys2 = document.getElementById('sys2');
+    const sys3 = document.getElementById('sys3');
+    const sys4 = document.getElementById('sys4');
+
+    sys2.innerHTML = '<option value="">-- เลือกเครื่องจักร --</option>';
+    sys3.innerHTML = '<option value="">-- เลือกเครื่องจักรย่อย --</option>';
+    sys4.innerHTML = '<option value="">-- เลือกระบบประกอบเครื่องจักร --</option>';
+
+    if (sys1Val && pmDropdownData[sys1Val]) {
+      for (let machine in pmDropdownData[sys1Val]) {
+        if (machine) {
+          sys2.innerHTML += `<option value="${machine}">${machine}</option>`;
+        }
+      }
+    }
+  }
+
+  function onMachineChange() {
+    const sys1Val = document.getElementById('sys1').value;
+    const sys2Val = document.getElementById('sys2').value;
+    const sys3 = document.getElementById('sys3');
+    const sys4 = document.getElementById('sys4');
+
+    sys3.innerHTML = '<option value="">-- เลือกเครื่องจักรย่อย --</option>';
+    sys4.innerHTML = '<option value="">-- เลือกระบบประกอบเครื่องจักร --</option>';
+
+    if (sys1Val && sys2Val && pmDropdownData[sys1Val][sys2Val]) {
+      for (let subMachine in pmDropdownData[sys1Val][sys2Val]) {
+        if (subMachine) {
+          sys3.innerHTML += `<option value="${subMachine}">${subMachine}</option>`;
+        }
+      }
+    }
+  }
+
+  function onSubMachineChange() {
+    const sys1Val = document.getElementById('sys1').value;
+    const sys2Val = document.getElementById('sys2').value;
+    const sys3Val = document.getElementById('sys3').value;
+    const sys4 = document.getElementById('sys4');
+
+    sys4.innerHTML = '<option value="">-- เลือกระบบประกอบเครื่องจักร --</option>';
+
+    if (sys1Val && sys2Val && sys3Val && pmDropdownData[sys1Val][sys2Val][sys3Val]) {
+      let components = pmDropdownData[sys1Val][sys2Val][sys3Val];
+      components.forEach(comp => {
+        if (comp) {
+          sys4.innerHTML += `<option value="${comp}">${comp}</option>`;
+        }
+      });
+    }
+  }
+
+  // ฟังก์ชันรวบรวมข้อมูลและส่งไปบันทึก
+  function submitPMRepair(event) {
+    if (event) event.preventDefault();
+
+    const sys1 = document.getElementById('sys1').value;
+    const sys2 = document.getElementById('sys2').value;
+    const sys3 = document.getElementById('sys3') ? document.getElementById('sys3').value : '';
+    const sys4 = document.getElementById('sys4') ? document.getElementById('sys4').value : '';
+
+    if (!sys1 || !sys2) {
+      alert('⚠️ กรุณาเลือกระบบและเครื่องจักรให้ครบถ้วนครับ');
+      return;
+    }
+
+    const maintenanceDetails = document.getElementById('f_details') ? document.getElementById('f_details').value : '';
+    const spareDetails = document.getElementById('f_spareDetails') ? document.getElementById('f_spareDetails').value : '';
+    const price = document.getElementById('f_price') ? document.getElementById('f_price').value : '';
+    const supervisor = document.getElementById('f_supervisor') ? document.getElementById('f_supervisor').value : '';
+    const hasSpareParts = document.getElementById('f_hasSparePart') ? (document.getElementById('f_hasSparePart').value === 'มี' ? 'มีการเปลี่ยนอะไหล่' : 'ไม่มี') : '';
+    const cycle = document.getElementById('f_cycle') ? document.getElementById('f_cycle').value : '';
+    const startDate = document.getElementById('f_startDate') ? document.getElementById('f_startDate').value : '';
+    const startTime = document.getElementById('f_startTime') ? document.getElementById('f_startTime').value : '';
+    const cause = document.getElementById('f_cause') ? document.getElementById('f_cause').value : '';
+    const prevention = document.getElementById('f_prevention') ? document.getElementById('f_prevention').value : '';
+    const workerName = document.getElementById('f_workerName') ? document.getElementById('f_workerName').value : '';
+    const workerType = document.getElementById('f_workerType') ? document.getElementById('f_workerType').value : '';
+
+    const pmData = {
+      sys1,
+      sys2,
+      sys3,
+      sys4,
+      maintenanceDetails,
+      hasSpareParts,
+      spareDetails,
+      price,
+      supervisor,
+      cycle,
+      startDate,
+      startTime,
+      cause,
+      prevention,
+      workerName,
+      workerType
+    };
+
+    const btn = document.getElementById('btnSavePM') || (event && event.target);
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '⏳ กำลังบันทึก...';
+    }
+
+    google.script.run
+      .withSuccessHandler(function(response) {
+        alert(response);
+        if (typeof navigateTo === 'function') {
+          navigateTo('pm_dashboard');
+        } else if (typeof closeModal === 'function') {
+          closeModal();
+        }
+      })
+      .withFailureHandler(function(error) {
+        alert('❌ เกิดข้อผิดพลาด: ' + (error.message || error));
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }
+      })
+      .savePMRepairLog(pmData);
+  }
+
+  // เรียกเมื่อโหลดหน้าเรียบร้อย
+  setTimeout(initCascadingDropdowns, 500);
+</script>
+
+<!-- =============== INCLUDE CENTRAL SCRIPTS =============== -->
+<?!= include('Common_JS'); ?>
+</body>
+</html>
