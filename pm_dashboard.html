@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PM Dashboard - ระบบวิศวกรรมอาคาร</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; }
+        #pageLoader {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.9);
+            z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column;
+        }
+        /* Custom Scrollbar for Table */
+        .table-container::-webkit-scrollbar { width: 6px; height: 6px; }
+        .table-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .status-badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; }
+        .status-pending { background-color: #fef3c7; color: #d97706; }
+        .status-completed { background-color: #d1fae5; color: #059669; }
+    </style>
+</head>
+<body class="text-slate-800 p-4 md:p-8">
+
+    <?!= include('Common_Navbar'); ?>
+
+
+    <div id="pageLoader" class="loader-container" style="display: none;">
+        <div class="spinner"></div>
+        <div class="mt-3 fw-bold text-secondary">
+            <div class="loader-message">กำลังโหลด...</div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto">
+        
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">⚙️ แผนงานซ่อมบำรุงอาคาร (PM)</h1>
+                <p class="text-slate-500 mt-1">ประจำปี 2026 - ระบบวิศวกรรมอาคาร TIJ</p>
+            </div>
+            <div class="flex flex-row items-center gap-3 w-full md:w-auto">
+                <button onclick="navigateTo('pm_repair')" class="bg-rose-500 border border-rose-600 text-white px-5 py-2.5 rounded-xl shadow-sm hover:bg-rose-600 transition font-medium flex items-center gap-2 flex-1 md:flex-none justify-center">
+                    <span>🛠️ แจ้งซ่อมด่วน</span>
+
+                </button>                
+                
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                <div class="w-14 h-14 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-2xl">📋</div>
+                <div>
+                    <p class="text-sm text-slate-500 font-medium">แผนงาน PM ทั้งหมด</p>
+                    <p class="text-3xl font-bold text-slate-800" id="statTotal">-</p>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                <div class="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl">✅</div>
+                <div>
+                    <p class="text-sm text-slate-500 font-medium">ดำเนินการแล้ว</p>
+                    <p class="text-3xl font-bold text-slate-800" id="statCompleted">-</p>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                <div class="w-14 h-14 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-2xl">⏳</div>
+                <div>
+                    <p class="text-sm text-slate-500 font-medium">รอดำเนินการ</p>
+                    <p class="text-3xl font-bold text-slate-800" id="statPending">-</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h2 class="text-lg font-bold text-slate-700">⏳ งานรอดำเนินการ</h2>
+            </div>
+            
+            <div class="overflow-x-auto table-container">
+                <table class="w-full text-left border-collapse min-w-[1100px]">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-500 text-sm uppercase tracking-wider">
+                            <th class="p-4 font-medium">รหัสอ้างอิง</th>
+                            <th class="p-4 font-medium">วันที่ / เวลา</th>
+                            <th class="p-4 font-medium">ระบบ</th>
+                            <th class="p-4 font-medium">เครื่องจักร</th>
+                            <th class="p-4 font-medium">ผู้ปฏิบัติงาน</th>
+                            <th class="p-4 font-medium">หมายเหตุ</th>
+                            <th class="p-4 font-medium">ราคา</th>
+                            <th class="p-4 font-medium text-center">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pmPendingBody" class="text-sm text-slate-600 divide-y divide-slate-100">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mt-6">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h2 class="text-lg font-bold text-slate-700">📋 ประวัติการทำงาน PM ล่าสุด</h2>
+            </div>
+            
+            <div class="overflow-x-auto table-container">
+                <table class="w-full text-left border-collapse min-w-[1000px]">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-500 text-sm uppercase tracking-wider">
+                            <th class="p-4 font-medium">รหัสอ้างอิง</th>
+                            <th class="p-4 font-medium">วันที่ / เวลา</th>
+                            <th class="p-4 font-medium">ระบบ</th>
+                            <th class="p-4 font-medium">เครื่องจักร</th>
+                            <th class="p-4 font-medium">ผู้ปฏิบัติงาน</th>
+                            <th class="p-4 font-medium">วันที่แล้วเสร็จ</th>
+                            <th class="p-4 font-medium">หมายเหตุ</th>
+                            <th class="p-4 font-medium">ราคา</th>
+                            <th class="p-4 font-medium text-center">สถานะ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pmTableBody" class="text-sm text-slate-600 divide-y divide-slate-100">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modal สำหรับอัพเดทงาน -->
+    <div id="updateJobModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="bg-blue-500 p-5 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg">อัพเดทสถานะงาน</h3>
+                <button onclick="closeUpdateModal()" class="text-white/80 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div class="p-6">
+                <form id="updateJobForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">รหัสอ้างอิง</label>
+                        <input type="text" id="updateJobId" class="w-full border border-slate-200 rounded-lg px-3 py-2 bg-slate-100" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">สถานะใหม่</label>
+                        <select id="updateJobStatus" class="w-full border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-blue-500">
+                            <option value="Pending">รอดำเนินการ</option>
+                            <option value="Completed">ดำเนินการแล้ว</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-3 justify-end pt-4">
+                        <button type="button" onclick="closeUpdateModal()" class="px-4 py-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium">ยกเลิก</button>
+                        <button type="button" onclick="submitJobUpdate()" class="px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 font-medium">บันทึก</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // เริ่มต้นทำงานเมื่อหน้าเว็บโหลด
+        document.addEventListener('DOMContentLoaded', loadPMData);
+
+        function loadPMData() {
+            // เรียกฟังก์ชัน getPMSchedule จาก Connect.js
+            google.script.run
+                .withSuccessHandler(renderDashboard)
+                .withFailureHandler(err => {
+                    alert("เกิดข้อผิดพลาดในการโหลดข้อมูล: " + err);
+                    document.getElementById('pageLoader').style.display = 'none';
+                })
+                .getPMSchedule(); // ฟังก์ชันนี้ดึงข้อมูลจาก PM_Log
+        }
+
+        function renderDashboard(data) {
+            document.getElementById('pageLoader').style.display = 'none';
+            
+            if(data.error) {
+                alert(data.error);
+                return;
+            }
+
+            let completed = 0;
+            let pending = 0;
+
+            // นับสถิติ
+            data.forEach(item => {
+                if (item.status.toLowerCase() === 'completed') completed++;
+                else pending++;
+            });
+
+            // อัปเดตตัวเลขการ์ดสรุป
+            document.getElementById('statTotal').innerText = data.length;
+            document.getElementById('statCompleted').innerText = completed;
+            document.getElementById('statPending').innerText = pending;
+
+            // แสดงตารางงานรอดำเนินการ
+            renderPendingJobs(data);
+
+            // แสดงตารางประวัติทั้งหมด
+            renderHistoryTable(data);
+        }
+
+        function renderPendingJobs(data) {
+            const pendingBody = document.getElementById('pmPendingBody');
+            let html = '';
+
+            const pendingJobs = data.filter(item => item.status.toLowerCase() === 'pending');
+
+            if(pendingJobs.length === 0) {
+                html = '<tr><td colspan="8" class="text-center p-4 text-slate-400">ไม่มีงานรอดำเนินการ</td></tr>';
+            } else {
+                pendingJobs.forEach(item => {
+                    html += `
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="p-4 align-top font-medium text-blue-600">${item.id || '-'}</td>
+                            <td class="p-4 align-top">
+                                <span class="text-slate-700">${item.pmDate || '-'}</span>
+                            </td>
+                            <td class="p-4 align-top">
+                                <span class="text-slate-600">${item.system || '-'}</span>
+                            </td>
+                            <td class="p-4 align-top">
+                                <span class="text-slate-600">${item.machine || '-'}</span><br>
+                                <span class="text-xs text-slate-400">${item.subMachine || '-'}</span>
+                            </td>
+                            <td class="p-4 align-top">
+                                <span class="text-slate-600">${item.responsible || '-'}</span>
+                            </td>
+                            <td class="p-4 align-top">
+                                <span class="text-slate-600 line-clamp-1" title="${item.remark}">${item.remark || '-'}</span>
+                            </td>
+                            <td class="p-4 align-top text-right">
+                                <span class="text-slate-600">${item.price !== '0' ? item.price + ' ฿' : '-'}</span>
+                            </td>
+                            <td class="p-4 align-top text-center">
+                                <button onclick="openUpdateModal('${item.id}')" class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-medium">
+                                    อัพเดทงาน
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            pendingBody.innerHTML = html;
+        }
+
+        function renderHistoryTable(data) {
+            const tbody = document.getElementById('pmTableBody');
+            let html = '';
+
+            data.forEach(item => {
+                const statusClass = item.status.toLowerCase() === 'completed' ? 'status-completed' : 'status-pending';
+                const statusText = item.status.toLowerCase() === 'completed' ? 'ดำเนินการแล้ว' : 'รอดำเนินการ';
+
+                html += `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="p-4 align-top font-medium text-blue-600">${item.id || '-'}</td>
+                        <td class="p-4 align-top">
+                            <span class="text-slate-700">${item.pmDate || '-'}</span>
+                        </td>
+                        <td class="p-4 align-top">
+                            <span class="text-slate-600">${item.system || '-'}</span>
+                        </td>
+                        <td class="p-4 align-top">
+                            <span class="text-slate-600">${item.machine || '-'}</span><br>
+                            <span class="text-xs text-slate-400">${item.subMachine || '-'}</span>
+                        </td>
+                        <td class="p-4 align-top">
+                            <span class="text-slate-600">${item.responsible || '-'}</span>
+                        </td>
+                        <td class="p-4 align-top">
+                            <span class="text-slate-600">${item.completeDate || '-'}</span>
+                        </td>
+                        <td class="p-4 align-top">
+                            <span class="text-slate-600 line-clamp-1" title="${item.remark}">${item.remark || '-'}</span>
+                        </td>
+                        <td class="p-4 align-top text-right">
+                            <span class="text-slate-600">${item.price !== '0' ? item.price + ' ฿' : '-'}</span>
+                        </td>
+                        <td class="p-4 align-top text-center">
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function openUpdateModal(jobId) {
+            document.getElementById('updateJobId').value = jobId;
+            document.getElementById('updateJobStatus').value = 'Completed';
+            document.getElementById('updateJobModal').style.display = 'flex';
+        }
+
+        function closeUpdateModal() {
+            document.getElementById('updateJobModal').style.display = 'none';
+        }
+
+        function submitJobUpdate() {
+            const jobId = document.getElementById('updateJobId').value;
+            const newStatus = document.getElementById('updateJobStatus').value;
+
+            // เรียกฟังก์ชัน backend (ถ้ามี) หรือแสดง alert ชั่วคราว
+            google.script.run
+                .withSuccessHandler(function() {
+                    alert('อัพเดทสถานะงานเรียบร้อย');
+                    closeUpdateModal();
+                    loadPMData(); // โหลดข้อมูลใหม่
+                })
+                .withFailureHandler(function(err) {
+                    alert('เกิดข้อผิดพลาด: ' + err);
+                })
+                .updateJobStatus(jobId, newStatus); 
+        }
+
+    </script>
+
+</body>
+</html>
