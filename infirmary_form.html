@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>บันทึกการเข้าใช้ห้องพยาบาล</title>
+    
+    <!-- =============== INCLUDE CENTRAL STYLES =============== -->
+    <?!= include('styles'); ?>
+    
+    <style>
+        /* =============== RESPONSIVE FORM =============== */
+        @media (max-width: 576px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .form-section {
+                padding: 1rem !important;
+            }
+            
+            .section-title {
+                font-size: 1rem !important;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+        }
+        
+        .form-section {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border-light);
+        }
+        
+        .section-title {
+            font-weight: 700;
+            color: var(--primary-orange);
+            border-bottom: 2px solid var(--primary-orange);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        #pageLoader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <?!= include('Common_Navbar'); ?>
+
+    <!-- =============== PAGE LOADER =============== -->
+    <div id="pageLoader" class="loader-container">
+        <div class="spinner"></div>
+        <div class="mt-3 fw-bold text-secondary">กำลังบันทึก...</div>
+    </div>
+
+    <!-- =============== HEADER =============== -->
+    <header class="bg-gradient-to-r" style="background: linear-gradient(135deg, #ef4444, #f97316); padding: 1.5rem 0; color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100;">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h3 class="mb-1">🏥 บันทึกการเข้าใช้ห้องพยาบาล</h3>
+                    <small>กรุณากรอกข้อมูลของคุณ</small>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container my-4 pb-5" style="max-width: 800px;">
+        
+        <!-- =============== FORM =============== -->
+        <form id="infirmaryForm" onsubmit="submitForm(event)">
+            
+            <!-- ========== Section 1: Personal Info ========== -->
+            <div class="form-section">
+                <div class="section-title">👤 ข้อมูลส่วนตัว</div>
+                
+                <div class="mb-3">
+                    <label class="form-label">ชื่อ - นามสกุล</label>
+                    <input type="text" class="form-control" name="col_A" placeholder="ชื่อของคุณ" required>
+                </div>
+                
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label">เพศ</label>
+                        <select class="form-select" name="col_B" required>
+                            <option value="">-- เลือก --</option>
+                            <option value="ชาย">ชาย</option>
+                            <option value="หญิง">หญิง</option>
+                            <option value="อื่น">อื่น ๆ</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">หน่วยงาน</label>
+                        <input type="text" class="form-control" name="col_C" placeholder="หน่วยงาน" required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== Section 2: Medical Info ========== -->
+            <div class="form-section">
+                <div class="section-title">⚕️ ข้อมูลทางการแพทย์</div>
+                
+                <div class="mb-3">
+                    <label class="form-label">กลุ่มโรค / อาการ</label>
+                    <select class="form-select" name="col_D" required>
+                        <option value="">-- เลือกกลุ่มโรค --</option>
+                        <option value="ปวดหัว">ปวดหัว</option>
+                        <option value="ปวดท้อง">ปวดท้อง</option>
+                        <option value="ท้องเสีย">ท้องเสีย</option>
+                        <option value="ไข้">ไข้</option>
+                        <option value="ho">ไอ-คัดจมูก</option>
+                        <option value="แพ้">แพ้</option>
+                        <option value="บาดเจ็บ">บาดเจ็บ</option>
+                        <option value="อื่น">อื่น ๆ</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">ยาที่เบิกจ่าย (แยกด้วย Enter)</label>
+                    <textarea class="form-control" name="col_E" rows="3" placeholder="บันทึกยาที่ได้รับ"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">บันทึกเพิ่มเติม</label>
+                    <textarea class="form-control" name="col_F" rows="2" placeholder="ข้อมูลเพิ่มเติมอื่น ๆ"></textarea>
+                </div>
+            </div>
+
+            <!-- ========== Section 3: Staff Info ========== -->
+            <div class="form-section">
+                <div class="section-title">👨‍⚕️ ข้อมูลพนักงาน</div>
+                
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label">ผู้บันทึก</label>
+                        <input type="text" class="form-control" name="col_G" placeholder="ชื่อผู้บันทึก">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">พยาบาลผู้ตรวจรักษา</label>
+                        <input type="text" class="form-control" name="col_H" placeholder="ชื่อพยาบาล" required>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">ความเห็นแพทย์ / พยาบาล</label>
+                    <textarea class="form-control" name="col_I" rows="2" placeholder="ข้อเสนอแนะเพิ่มเติม"></textarea>
+                </div>
+            </div>
+
+            <!-- ========== Action Buttons ========== -->
+            <div class="d-flex gap-2 mb-3 flex-wrap">
+                <button type="submit" class="btn btn-primary flex-grow-1">
+                    ✅ บันทึกข้อมูล
+                </button>
+                <button type="reset" class="btn btn-secondary flex-grow-1">
+                    ↺ ล้างฟอร์ม
+                </button>
+            </div>
+            <button type="button" onclick="navigateTo('main')" class="btn btn-outline-secondary w-100">
+                ← ย้อนกลับ
+            </button>
+        </form>
+    </div>
+
+    <!-- =============== INCLUDE CENTRAL SCRIPTS =============== -->
+    <?!= include('scripts'); ?>
+
+    <script>
+        function navigateTo(pageName) {
+            showLoader('กำลังนำทาง...');
+            
+            google.script.run
+                .withSuccessHandler(function(htmlContent) {
+                    document.open();
+                    document.write(htmlContent);
+                    document.close();
+                })
+                .withFailureHandler(function(error) {
+                    hideLoader();
+                    showError('ข้อผิดพลาด', error.message || 'ไม่สามารถโหลดหน้านี้ได้');
+                })
+                .loadHtmlPage(pageName);
+        }
+
+        function submitForm(event) {
+            event.preventDefault();
+            
+            // Validate form
+            if (!document.getElementById('infirmaryForm').checkValidity()) {
+                showWarning('ข้อมูลไม่ครบ', 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน');
+                return;
+            }
+
+            // Prepare data
+            const formData = new FormData(document.getElementById('infirmaryForm'));
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                data[key] = value;
+            }
+
+            showLoader('กำลังบันทึกข้อมูล...');
+
+            // Send to Google Apps Script
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoader();
+                    showSuccess('สำเร็จ!', result);
+                    setTimeout(() => {
+                        document.getElementById('infirmaryForm').reset();
+                        navigateTo('infirmary_dashboard');
+                    }, 1500);
+                })
+                .withFailureHandler(function(error) {
+                    hideLoader();
+                    showError('ข้อผิดพลาด', error.message || 'ไม่สามารถบันทึกข้อมูล');
+                })
+                .saveINFLog(data);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            hideLoader();
+        });
+    </script>
+</body>
+</html>
