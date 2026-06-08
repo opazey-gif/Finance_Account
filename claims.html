@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
+    <style>
+        body { font-family: 'Kanit', sans-serif; background-color: #f1f5f9; }
+        #pageLoader {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.9);
+            z-index: 9999; display: none; align-items: center; justify-content: center; flex-direction: column;
+        }
+        .form-card { background: white; border-radius: 24px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04); }
+        .input-style { 
+            width: 100%; padding: 12px 16px; border: 1.5px solid #e2e8f0; border-radius: 12px; 
+            transition: all 0.2s; font-size: 14px; outline: none;
+        }
+        .input-style:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+        label { display: block; font-size: 13px; font-weight: 500; color: #64748b; margin-bottom: 6px; margin-left: 4px; }
+        .section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 16px; margin-top: 8px; display: flex; align-items: center; gap: 8px; }
+        .section-title::after { content: ""; height: 1px; background: #e2e8f0; flex: 1; }
+    </style>
+</head>
+<body class="py-10 px-4">
+
+    <?!= include('Common_Navbar'); ?>
+
+
+    <div class="max-w-md mx-auto">
+        <div class="mb-6 flex justify-between items-center px-2">
+        <a onclick="navigateTo('dashboard')" class="cursor-pointer text-slate-500 hover:text-slate-800 flex items-center gap-1.5 text-sm font-medium transition">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          ย้อนกลับ
+        </a>
+            <span class="text-[10px] bg-slate-200 text-slate-600 px-2 py-1 rounded-md font-bold uppercase tracking-wider">Form ID: TIJ-TRAVEL</span>
+        </div>
+
+        <div class="form-card p-8 border border-white">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-bold text-slate-800">ยื่นคำขอเบิกค่าเดินทาง</h2>
+                <p class="text-slate-400 text-sm mt-1 font-light">กรุณาระบุรายละเอียดการเดินทางเพื่อขออนุมัติ</p>
+            </div>
+
+            <div class="space-y-6">
+                <div>
+                    <div class="section-title">ข้อมูลผู้เบิก</div>
+                    <div class="space-y-4">
+                        <div>
+                            <label>อีเมลผู้ใช้งาน</label>
+                            <input type="email" id="email" class="input-style" placeholder="example@tijthailand.org">
+                        </div>
+                        <div>
+                            <label>ชื่อ-นามสกุล</label>
+                            <input type="text" id="name" class="input-style" placeholder="ระบุชื่อและนามสกุล">
+                        </div>
+                        <div>
+                            <label>สำนัก / ฝ่าย</label>
+                            <select id="department" class="input-style bg-white">
+                                <option value="">-- เลือกหน่วยงาน --</option>
+                                <option value="สำนักบริหาร">สำนักบริหาร</option>
+                                <option value="สำนักวิชาการ">สำนักวิชาการ</option>
+                                <option value="สำนักไอที">สำนักไอที</option>
+                                <option value="สำนักการเงิน">สำนักการเงิน</option>
+                                <option value="สำนักทรัพยากรบุคคล">สำนักทรัพยากรบุคคล</option>
+                                <option value="สำนักปฏิบัติการ">สำนักปฏิบัติการ</option>
+                                <option value="อื่นๆ">อื่นๆ</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="section-title">รายละเอียดการเดินทาง</div>
+                    <div class="space-y-4">
+                        <div>
+                            <label>วันที่เดินทาง</label>
+                            <input type="text" id="travelDate" class="input-style bg-white" placeholder="คลิกเพื่อเลือกวันที่เดินทาง">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label>ประเภทพาหนะ</label>
+                                <select id="traveltype" class="input-style bg-white" onchange="checkTravelType()">
+                                    <option value="">-- เลือก --</option>
+                                    <option value="รถแท็กซี่">รถแท็กซี่</option>
+                                    <option value="รถไฟ">รถไฟ</option>
+                                    <option value="รถตู้สำนักงาน">รถตู้สำนักงาน</option>
+                                    <option value="รถมอเตอร์ไซค์">รถมอเตอร์ไซค์</option>
+                                    <option value="รถขนส่งสาธารณะ">รถขนส่งสาธารณะ</option>
+                                    <option value="อื่นๆ">อื่นๆ</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>จำนวนเงิน (บาท)</label>
+                                <input type="number" id="amount" class="input-style" placeholder="0.00">
+                            </div>
+                        </div>
+                        
+                        <div id="otherTravelDiv" style="display: none;" class="animate-in fade-in slide-in-from-top-2">
+                            <label>ระบุประเภทพาหนะอื่นๆ</label>
+                            <input type="text" id="otherTravelType" class="input-style" placeholder="เช่น Grab, รถส่วนตัว">
+                        </div>
+
+                        <div>
+                            <label>วัตถุประสงค์การเดินทาง</label>
+                            <textarea id="purpose" class="input-style h-24 resize-none" placeholder="โปรดระบุเหตุผลในการเดินทาง..."></textarea>
+                        </div>
+
+                        <div>
+                            <label>📸 อัปโหลดใบเสร็จ/หลักฐาน (ไม่จำเป็น)</label>
+                            <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition" onclick="document.getElementById('receiptFile').click()">
+                                <input type="file" id="receiptFile" class="hidden" accept="image/*,.pdf">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto text-slate-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                <p class="text-slate-600 font-medium text-sm">คลิกที่นี่เพื่ออัปโหลดไฟล์</p>
+                                <p class="text-slate-400 text-xs mt-1">หรือลากไฟล์มาวางที่นี่</p>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-2">✓ ประเภท: JPG, PNG, PDF | ✓ ขนาดไม่เกิน 5 MB</p>
+                            <div id="filePreview" class="mt-3"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4">
+                    <button type="button" id="submitBtn" onclick="submitForm()" class="w-full bg-slate-900 hover:bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-slate-200 transition-all active:scale-[0.98]">
+                        ส่งคำขออนุมัติ
+                    </button>
+                    <div id="status-msg" class="text-center mt-4 min-h-[20px]"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+window.onload = function() {
+    // 1. โหลด URL พร้อมดัก Error
+    google.script.run
+        .withSuccessHandler(function(url) {
+            APP_URL = url;
+            console.log("System Ready");
+            // คุณอาจจะปลดล็อกปุ่ม Submit ตรงนี้ (ถ้ามี)
+            // document.getElementById("submitBtn").disabled = false;
+        })
+        .withFailureHandler(function(err) {
+            alert("โหลดข้อมูลระบบไม่สำเร็จ กรุณารีเฟรชหน้าจอ");
+        })
+        .getScriptURL();
+
+    // 2. Flatpickr ทำงานได้เลย (เพราะไม่ได้ใช้ APP_URL)
+    flatpickr("#travelDate", {
+        locale: "th",
+        enableTime: true,
+        time_24hr: true,
+        dateFormat: "Y-m-d H:i",
+        altInput: true,
+        altFormat: "d/m/Y H:i",
+        allowInput: false,
+        defaultDate: new Date()
+    });
+};
+
+// 3. เวลาจะใช้งาน APP_URL ให้เช็คก่อนเสมอ
+function sendData() {
+    if (!APP_URL) {
+        alert("ระบบยังโหลดไม่เสร็จ กรุณารอครู่เดียวครับ");
+        return;
+    }
+    // ทำงานต่อไป...
+}
+
+        // ฟังก์ชันสำหรับเปลี่ยนหน้าเว็บแบบไร้รอยต่อ (SPA) แก้ปัญหาจอขาวและโหลดช้า
+        function navigateTo(pageName) {
+            // 1. แสดงหน้าต่างโหลดบังไว้ก่อน
+            document.getElementById('pageLoader').style.display = 'flex';
+            
+            // 2. เรียกไปที่ฟังก์ชันดึง HTML จากฝั่ง Connect.js มาเขียนทับ (ไม่เกิดการรีเฟรชหน้าจอ)
+            google.script.run
+                .withSuccessHandler(function(htmlContent) {
+                    document.open();
+                    document.write(htmlContent);
+                    document.close();
+                })
+                .withFailureHandler(function(error) {
+                    alert('ไม่สามารถโหลดหน้าเว็บได้: ' + error);
+                    document.getElementById('pageLoader').style.display = 'none';
+                })
+                .loadHtmlPage(pageName); // เรียกฟังก์ชันใน Connect.js
+        }
+
+        function checkTravelType() {
+            const selectBox = document.getElementById("traveltype");
+            const otherDiv = document.getElementById("otherTravelDiv");
+            otherDiv.style.display = (selectBox.value === "อื่นๆ") ? "block" : "none";
+        }
+
+        // ฟังก์ชันแสดงตัวอย่างไฟล์ที่เลือก
+        const fileInput = document.getElementById('receiptFile');
+        const filePreview = document.getElementById('filePreview');
+        const dropZone = fileInput.parentElement;
+
+        function validateAndPreviewFile(file) {
+            if (!file) return;
+            
+            const maxSize = 5 * 1024 * 1024; // 5 MB
+            const fileSize = (file.size / 1024 / 1024).toFixed(2);
+            
+            if (fileSize > 5) {
+                alert('⚠️ ไฟล์ใหญ่เกินไป! (มากกว่า 5 MB)');
+                fileInput.value = '';
+                filePreview.innerHTML = '';
+                return false;
+            }
+            
+            const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+            if (!validTypes.includes(file.type)) {
+                alert('⚠️ ต้องเป็นไฟล์ JPG, PNG, GIF หรือ PDF เท่านั้น');
+                fileInput.value = '';
+                filePreview.innerHTML = '';
+                return false;
+            }
+            
+            // แสดงตัวอย่างไฟล์
+            filePreview.innerHTML = `<div class="text-sm bg-green-50 text-green-700 p-3 rounded-lg border border-green-200 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span><strong>✓ ${file.name}</strong> (${fileSize} MB)</span>
+            </div>`;
+            return true;
+        }
+
+        fileInput?.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            validateAndPreviewFile(file);
+        });
+
+        // Drag and Drop functionality
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('bg-blue-100', 'border-blue-500');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('bg-blue-100', 'border-blue-500');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('bg-blue-100', 'border-blue-500');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                fileInput.files = e.dataTransfer.files;
+                validateAndPreviewFile(file);
+            }
+        });
+
+        function submitForm() {
+            const btn = document.getElementById('submitBtn');
+            const statusDiv = document.getElementById('status-msg');
+            const selectedType = document.getElementById('traveltype').value;
+            let finalTravelType = selectedType;
+
+            if (selectedType === "อื่นๆ") finalTravelType = document.getElementById('otherTravelType').value;
+            
+            const data = {
+                email: document.getElementById('email').value,
+                name: document.getElementById('name').value,
+                department: document.getElementById('department').value,
+                travelDate: document.getElementById('travelDate').value,
+                traveltype: finalTravelType,
+                purpose: document.getElementById('purpose').value,
+                amount: document.getElementById('amount').value
+            };
+
+            if(!data.email || !data.name || !data.department || !data.travelDate || !data.traveltype || !data.purpose || !data.amount) {
+                statusDiv.className = "text-center mt-4 text-red-500 text-sm font-medium";
+                statusDiv.innerHTML = "⚠️ กรุณากรอกข้อมูลให้ครบทุกช่อง";
+                return;
+            }
+
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            statusDiv.className = "text-center mt-4 text-amber-500 text-sm font-medium animate-pulse";
+            statusDiv.innerHTML = "⏳ กำลังบันทึกข้อมูล...";
+
+            // ดึงไฟล์ถ้ามี
+            const fileInput = document.getElementById('receiptFile');
+            const selectedFile = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+
+            if (selectedFile) {
+                // ถ้ามีไฟล์ให้ส่งผ่าน uploadFile()
+                const fileName = selectedFile.name;
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const fileContent = e.target.result; // Base64 string
+                    
+                    console.log("📤 เตรียมส่ง: " + fileName);
+                    console.log("📦 ขนาด: " + fileContent.length + " bytes");
+                    
+                    statusDiv.className = "text-center mt-4 text-blue-500 text-sm font-medium animate-pulse";
+                    statusDiv.innerHTML = "⏳ กำลังอัปโหลดไฟล์...";
+                    
+                    google.script.run
+                        .withSuccessHandler(function(fileUrl) {
+                            console.log("✅ อัปโหลดสำเร็จ: " + fileUrl);
+                            data.receiptUrl = fileUrl;
+                            saveClaim(data, btn, statusDiv);
+                        })
+                        .withFailureHandler(function(err) {
+                            console.error("❌ อัปโหลดไม่สำเร็จ: " + err);
+                            statusDiv.className = "text-center mt-4 text-red-500 text-sm";
+                            statusDiv.innerHTML = "❌ อัปโหลดไฟล์ไม่สำเร็จ: " + err;
+                            btn.disabled = false;
+                            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        })
+                        .uploadReceiptFile(fileName, fileContent);
+                };
+                
+                reader.onerror = function(err) {
+                    console.error("❌ FileReader Error: " + err.message);
+                    statusDiv.className = "text-center mt-4 text-red-500 text-sm";
+                    statusDiv.innerHTML = "❌ ไม่สามารถอ่านไฟล์: " + err.message;
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                };
+                
+                reader.readAsDataURL(selectedFile);
+            } else {
+                // ไม่มีไฟล์ให้บันทึกปกติ
+                console.log("ℹ️ ไม่มีไฟล์, บันทึกปกติ");
+                saveClaim(data, btn, statusDiv);
+            }
+        }
+
+        function saveClaim(data, btn, statusDiv) {
+            google.script.run
+                .withSuccessHandler(function(response) {
+                    statusDiv.className = "text-center mt-4 text-emerald-500 text-sm font-bold bg-emerald-50 py-2 rounded-lg border border-emerald-100";
+                    statusDiv.innerHTML = "✅ " + response; 
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    
+                    ['travelDate', 'traveltype', 'otherTravelType', 'purpose', 'amount', 'receiptFile'].forEach(id => {
+                        const elem = document.getElementById(id);
+                        if (elem) elem.value = '';
+                    });
+                    document.getElementById('otherTravelDiv').style.display = 'none';
+                    document.getElementById('filePreview').innerHTML = '';
+
+                    alert("บันทึกข้อมูลสำเร็จ!\n" + response); 
+                    
+                    sessionStorage.setItem('openHistoryTab', 'true'); 
+                    navigateTo('dashboard');
+                })
+                .withFailureHandler(function(err) {
+                    statusDiv.className = "text-center mt-4 text-red-500 text-sm";
+                    statusDiv.innerHTML = "❌ เกิดข้อผิดพลาด: " + err;
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                })
+                .saveClaim(data);
+        }
+    </script>
+
+    <div id="pageLoader" class="loader-container" style="display: none;">
+        <div class="spinner"></div>
+        <div class="mt-3 fw-bold text-secondary">
+            <div class="loader-message">กำลังโหลด...</div>
+        </div>
+    </div>
+</body>
+</html>
