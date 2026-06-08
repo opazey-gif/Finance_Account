@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="th" xml:lang="th">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบเบิก/ยืม ครุภัณฑ์จำนวนมาก</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- เรียกใช้ไฟล์ Common_CSS -->
+    <?!= include('Common_CSS'); ?>
+    
+    <style>
+        body { background-color: #f8fafc; font-family: 'Prompt', sans-serif; }
+        
+        .loader-container {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: rgba(255, 255, 255, 0.9);
+            z-index: 9999; display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+        .spinner {
+            width: 60px; height: 60px; border: 6px solid #f3f3f3;
+            border-top: 6px solid #0ea5e9; border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loader-hidden { opacity: 0; visibility: hidden; }
+
+        .card-custom { border: none; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .header-gradient { background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%); color: white; border-radius: 15px 15px 0 0; padding: 1.5rem; }
+        
+        .bulk-textarea {
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre;
+            overflow-wrap: normal;
+            overflow-x: scroll;
+        }
+        
+        .table-wrapper { max-height: 400px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+
+    <?!= include('Common_Navbar'); ?>
+
+    <!-- Loader -->
+    <div id="pageLoader" class="loader-container">
+        <div class="spinner"></div>
+        <p class="mt-3 fw-bold text-secondary" id="loaderText">กำลังโหลดข้อมูลครุภัณฑ์...</p>
+    </div>
+
+    <div class="container py-5 max-w-4xl" style="max-width: 1000px; margin: auto;">
+        
+        <div class="card card-custom mb-4">
+            <div class="header-gradient d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="mb-0 fw-bold"><i class="fas fa-barcode me-2"></i>ระบบเบิกครุภัณฑ์ (แบบกลุ่ม / จำนวนมาก)</h3>
+                    <p class="mb-0 text-white-50 mt-1">รองรับการ Scan บาร์โค้ด หรือ Copy รหัสจาก Excel มาวาง</p>
+                </div>
+                <button class="btn btn-light btn-sm fw-bold text-primary" onclick="navigateTo('durable_dashboard')">
+                    <i class="fas fa-arrow-left me-1"></i> กลับหน้าหลัก
+                </button>
+            </div>
+            
+            <div class="card-body p-4 p-md-5 bg-white">
+                <!-- เปลี่ยนไปใช้ onsubmit แทน addEventListener เพื่อแก้ปัญหา Error -->
+                <form id="bulkClaimForm" onsubmit="submitBulkClaim(event)">
+                    
+                    <!-- ส่วนที่ 1: ข้อมูลผู้เบิก -->
+                    <h5 class="fw-bold text-primary border-bottom pb-2 mb-4">1. ข้อมูลผู้เบิก / ยืม</h5>
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">วันที่เบิก <span class="text-danger">*</span></label>
+                            <input type="date" id="dateInput" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">ส่วนงาน/แผนก <span class="text-danger">*</span></label>
+                            <select id="department" class="form-select" required>
+                                <option value="" selected disabled>เลือกแผนก...</option>
+                                <option value="OED">OED</option>
+                                <option value="OSP">OSP</option>
+                                <option value="OM">OM</option>
+                                <option value="Academy">Academy</option>
+                                <option value="OJI">OJI</option>
+                                <option value="OBR">OBR</option>
+                                <option value="EXPO">EXPO</option>
+                                <option value="OPC">OPC</option>
+                                <option value="KCS">KCS</option>
+                                <option value="BSM">BSM</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">ชื่อผู้ขอเบิก <span class="text-danger">*</span></label>
+                            <input type="text" id="fullname" class="form-control" placeholder="ระบุชื่อ-นามสกุล" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">จุดประสงค์ / สถานที่นำไปใช้ <span class="text-danger">*</span></label>
+                            <input type="text" id="locationUse" class="form-control" placeholder="เช่น ใช้จัดงานประชุมชั้น 2" required>
+                        </div>
+                    </div>
+
+                    <!-- ส่วนที่ 2: นำเข้ารหัสครุภัณฑ์ -->
+                    <h5 class="fw-bold text-primary border-bottom pb-2 mb-3 mt-5">2. กรอกรหัสครุภัณฑ์</h5>
+                    <div class="alert alert-info py-2 px-3 small mb-3">
+                        <i class="fas fa-info-circle me-1"></i> สามารถใช้เครื่องยิงบาร์โค้ดสแกนรหัส หรือ Copy รหัสครุภัณฑ์จาก Excel มาวางได้เลย (1 บรรทัด ต่อ 1 รหัส)
+                    </div>
+                    
+                    <div class="mb-3">
+                        <textarea id="bulkIdsInput" class="form-control bulk-textarea" rows="8" placeholder="ยธ.สธท.xxxx-xxx-xxxx/xx&#10;ยธ.สธท.xxxx-xxx-xxxx/xx&#10;..."></textarea>
+                    </div>
+                    
+                    <div class="d-grid mb-4">
+                        <button type="button" class="btn btn-secondary fw-bold" onclick="verifyEquipmentIds()">
+                            <i class="fas fa-search me-2"></i>ตรวจสอบรหัสครุภัณฑ์ทั้งหมด
+                        </button>
+                    </div>
+
+                    <!-- ส่วนที่ 3: ตารางแสดงผลการตรวจสอบ -->
+                    <div id="verificationResultSection" style="display: none;">
+                        <h5 class="fw-bold text-primary border-bottom pb-2 mb-3 mt-5">3. ผลการตรวจสอบข้อมูล</h5>
+                        
+                        <div class="row text-center mb-3">
+                            <div class="col-4">
+                                <div class="p-2 bg-light rounded border">
+                                    <small class="text-muted d-block">อ่านได้ทั้งหมด</small>
+                                    <strong class="fs-4 text-dark" id="countTotal">0</strong>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="p-2 bg-success bg-opacity-10 border border-success rounded">
+                                    <small class="text-success d-block">พร้อมเบิก (ผ่าน)</small>
+                                    <strong class="fs-4 text-success" id="countValid">0</strong>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="p-2 bg-danger bg-opacity-10 border border-danger rounded">
+                                    <small class="text-danger d-block">ติดปัญหา</small>
+                                    <strong class="fs-4 text-danger" id="countInvalid">0</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive table-wrapper border rounded">
+                            <table class="table table-hover table-sm align-middle mb-0" style="font-size: 0.9rem;">
+                                <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
+                                    <tr>
+                                        <th>ลำดับ</th>
+                                        <th>รหัสครุภัณฑ์</th>
+                                        <th>รายการ</th>
+                                        <th>สถานะระบบ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="verificationTableBody">
+                                    <!-- ข้อมูลจะถูกสร้างด้วย JS -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <hr class="text-muted opacity-25 my-4">
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="button" class="btn btn-outline-secondary px-4 me-2" onclick="document.getElementById('bulkIdsInput').value=''; document.getElementById('verificationResultSection').style.display='none';">ล้างข้อมูลใหม่</button>
+                            <button type="submit" id="btnSubmitBulk" class="btn text-white fw-bold shadow-sm px-5" style="background-color: #0ea5e9;" disabled>
+                                <i class="fas fa-save me-2"></i>ยืนยันการเบิก (<span id="btnSubmitCount">0</span> รายการ)
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- เรียกใช้ไฟล์ Common_JS -->
+    <?!= include('Common_JS'); ?>
+
+    <script>
+        // เปลี่ยนมาใช้ var เพื่อป้องกัน Error ตัวแปรซ้ำซ้อนตอนเปลี่ยนหน้า (SPA)
+        var equipmentMasterData = {}; 
+        var verifiedValidItems = [];  
+        var isNavigating = false;
+
+        // ดึงวันที่ปัจจุบัน
+        var dateInputEl = document.getElementById('dateInput');
+        if(dateInputEl) dateInputEl.valueAsDate = new Date();
+        
+        // สั่งให้เริ่มดึงข้อมูลทันที ไม่ต้องรอ DOMContentLoaded เพื่อแก้ปัญหา Loader ค้าง
+        loadEquipmentMaster();
+
+        function loadEquipmentMaster() {
+            var loader = document.getElementById('pageLoader');
+            if(loader) loader.classList.remove('loader-hidden');
+
+            if (typeof google !== 'undefined' && google.script) {
+                google.script.run
+                    .withSuccessHandler(function(data) {
+                        equipmentMasterData = data;
+                        if(loader) loader.classList.add('loader-hidden');
+                    })
+                    .withFailureHandler(function(error) {
+                        alert('โหลดข้อมูลฐานข้อมูลล้มเหลว: ' + error);
+                        if(loader) loader.classList.add('loader-hidden');
+                    })
+                    .getAllEquipmentMasterData(); 
+            } else {
+                // Mockup สำหรับการ Preview บน Browser ทั่วไป
+                equipmentMasterData = {
+                    "ยธ.สธท.7440-001-0004/56": { name: "เครื่องคอมพิวเตอร์แบบตั้งโต๊ะ", status: "ปกติ" },
+                    "ยธ.สธท.7440-001-0005/56": { name: "เครื่องคอมพิวเตอร์สำหรับผู้บริหาร", status: "รอจำหน่าย" },
+                    "12345": { name: "เก้าอี้สำนักงาน", status: "ปกติ" }
+                };
+                setTimeout(function() { if(loader) loader.classList.add('loader-hidden'); }, 800);
+            }
+        }
+
+        // ฟังก์ชันตรวจสอบรหัสที่กรอกเข้ามาใน Textarea
+        function verifyEquipmentIds() {
+            var rawText = document.getElementById('bulkIdsInput').value;
+            if (!rawText.trim()) {
+                alert("กรุณากรอกหรือสแกนรหัสครุภัณฑ์ก่อนตรวจสอบ");
+                return;
+            }
+
+            // แยกข้อความด้วยบรรทัดใหม่หรือลูกน้ำ และลบช่องว่าง
+            var rawIds = rawText.split(/[\n,]+/).map(function(id) { return id.trim(); }).filter(function(id) { return id !== ''; });
+            
+            // ลบรหัสที่ซ้ำกัน (Duplicate) ป้องกันยิงบาร์โค้ดเบิ้ล
+            var uniqueIds = [...new Set(rawIds)];
+
+            var validCount = 0;
+            var invalidCount = 0;
+            verifiedValidItems = [];
+            var tbodyHtml = '';
+
+            uniqueIds.forEach(function(id, index) {
+                var eqData = equipmentMasterData[id];
+                var statusMsg = "";
+                var itemName = "-";
+                var rowClass = "";
+                var icon = "";
+
+                if (eqData) {
+                    itemName = eqData.name;
+                    // ตรวจสอบเงื่อนไขว่าสามารถเบิกได้หรือไม่
+                    if (eqData.status === "ปกติ" || eqData.status === "ว่าง") {
+                        statusMsg = "พร้อมเบิก";
+                        rowClass = "";
+                        icon = '<i class="fas fa-check-circle text-success"></i>';
+                        validCount++;
+                        verifiedValidItems.push({
+                            id: id,
+                            name: itemName
+                        });
+                    } else {
+                        statusMsg = 'ไม่สามารถเบิกได้ (' + eqData.status + ')';
+                        rowClass = "table-warning";
+                        icon = '<i class="fas fa-exclamation-triangle text-warning"></i>';
+                        invalidCount++;
+                    }
+                } else {
+                    statusMsg = "ไม่พบรหัสนี้ในฐานข้อมูล";
+                    rowClass = "table-danger text-danger";
+                    icon = '<i class="fas fa-times-circle text-danger"></i>';
+                    invalidCount++;
+                }
+
+                tbodyHtml += '<tr class="' + rowClass + '">' +
+                        '<td>' + (index + 1) + '</td>' +
+                        '<td class="fw-bold">' + id + '</td>' +
+                        '<td>' + itemName + '</td>' +
+                        '<td>' + icon + ' ' + statusMsg + '</td>' +
+                    '</tr>';
+            });
+
+            // อัปเดต UI
+            document.getElementById('countTotal').textContent = uniqueIds.length;
+            document.getElementById('countValid').textContent = validCount;
+            document.getElementById('countInvalid').textContent = invalidCount;
+            document.getElementById('verificationTableBody').innerHTML = tbodyHtml;
+            document.getElementById('verificationResultSection').style.display = 'block';
+
+            // เปิดปุ่ม Submit ถ้ามีของที่ผ่านอย่างน้อย 1 ชิ้น
+            var btnSubmit = document.getElementById('btnSubmitBulk');
+            if (validCount > 0) {
+                btnSubmit.disabled = false;
+                document.getElementById('btnSubmitCount').textContent = validCount;
+            } else {
+                btnSubmit.disabled = true;
+                document.getElementById('btnSubmitCount').textContent = "0";
+            }
+        }
+
+        // ฟังก์ชันกดยืนยันการเบิก (เรียกผ่าน onsubmit ใน HTML)
+        function submitBulkClaim(e) {
+            e.preventDefault();
+
+            if (verifiedValidItems.length === 0) {
+                alert("ไม่มีรายการที่สามารถเบิกได้ กรุณาตรวจสอบรหัสอีกครั้ง");
+                return;
+            }
+
+            // รวบรวมข้อมูลส่วน Header
+            var formData = {
+                date: document.getElementById('dateInput').value,
+                department: document.getElementById('department').value,
+                requester: document.getElementById('fullname').value,
+                location: document.getElementById('locationUse').value
+            };
+
+            var loader = document.getElementById('pageLoader');
+            document.getElementById('loaderText').textContent = "กำลังบันทึกข้อมูลจำนวนมาก กรุณารอสักครู่...";
+            if(loader) loader.classList.remove('loader-hidden');
+
+            // ส่งข้อมูลไปที่ Connect.js
+            if (typeof google !== 'undefined' && google.script) {
+                google.script.run
+                    .withSuccessHandler(function(response) {
+                        alert('บันทึกการเบิกสำเร็จ จำนวน ' + verifiedValidItems.length + ' รายการ!');
+                        navigateTo('durable_dashboard'); 
+                    })
+                    .withFailureHandler(function(error) {
+                        alert('เกิดข้อผิดพลาดในการบันทึก: ' + error.message);
+                        if(loader) loader.classList.add('loader-hidden');
+                    })
+                    .saveBulkEquipmentClaim(formData, verifiedValidItems);
+            } else {
+                setTimeout(function() {
+                    alert('จำลองการบันทึกสำเร็จ\\nผู้เบิก: ' + formData.requester + '\\nจำนวน: ' + verifiedValidItems.length + ' ชิ้น');
+                    if(loader) loader.classList.add('loader-hidden');
+                }, 1500);
+            }
+        }
+
+        // ระบบ Navigate (เปลี่ยนหน้า)
+        function navigateTo(pageName) {
+            isNavigating = true; 
+            var loader = document.getElementById('pageLoader');
+            if (loader) { document.getElementById('loaderText').textContent = "กำลังโหลดข้อมูล..."; loader.classList.remove('loader-hidden'); }
+
+            if (typeof google !== 'undefined' && google.script) {
+                google.script.run
+                    .withSuccessHandler(function(htmlContent) { document.open(); document.write(htmlContent); document.close(); })
+                    .withFailureHandler(function(error) { alert('โหลดหน้าไม่สำเร็จ: ' + error); if(loader) loader.classList.add('loader-hidden'); })
+                    .loadHtmlPage(pageName); 
+            } else {
+                setTimeout(function() { if(loader) loader.classList.add('loader-hidden'); }, 800); 
+            }
+        }
+    </script>
+</body>
+</html>
