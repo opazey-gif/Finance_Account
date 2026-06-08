@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="th" xml:lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบจัดการวัสดุและครุภัณฑ์</title>
+  <?!= include('Common_CSS'); ?>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+<style>
+/* ── layout ── */
+body { overflow-x:hidden; background:#f8fafc; }
+.page-wrapper { display:flex; min-height:100vh; }
+
+/* sidebar */
+#sidebar {
+  min-width:240px; max-width:240px; background:#1e293b; color:#fff;
+  flex-shrink:0; transition:all .3s ease; position:relative;
+}
+#sidebar.collapsed { margin-left:-240px; }
+.sidebar-logo { padding:1.2rem 1rem; border-bottom:1px solid rgba(255,255,255,.08); text-align:center; }
+.sidebar-logo h5 { color:#f97316; font-weight:700; margin:0; font-size:.95rem; }
+.sidebar-logo small { color:#94a3b8; font-size:.72rem; }
+.sidebar-section-label { font-size:.65rem; text-transform:uppercase; letter-spacing:.08em; color:#64748b; font-weight:700; padding:14px 16px 5px; }
+#sidebar .nav-link {
+  color:rgba(255,255,255,.72); padding:9px 16px; border-radius:8px;
+  margin:0 8px 2px; font-size:.86rem; transition:all .2s;
+  display:flex; align-items:center; gap:9px; text-decoration:none; cursor:pointer;
+}
+#sidebar .nav-link:hover { background:rgba(249,115,22,.15); color:#f97316; }
+#sidebar .nav-link.active { background:rgba(249,115,22,.22); color:#f97316; font-weight:600; }
+#sidebar .nav-link .nbadge {
+  margin-left:auto; background:rgba(249,115,22,.25); color:#f97316;
+  border-radius:6px; padding:1px 7px; font-size:.7rem; font-weight:700;
+}
+.sb-close { display:none; background:transparent; border:none; color:#94a3b8;
+  font-size:1.4rem; position:absolute; top:12px; right:12px; cursor:pointer; }
+.sb-close:hover { color:#fff; }
+#sidebarOverlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5);
+  z-index:1040; backdrop-filter:blur(2px); }
+#sidebarOverlay.active { display:block; }
+
+/* main */
+#main-content { flex:1; min-width:0; padding:1.4rem; }
+#sidebarToggle {
+  background:white; border:1px solid #e2e8f0; border-radius:10px;
+  width:34px; height:34px; display:flex; align-items:center;
+  justify-content:center; cursor:pointer; transition:all .2s; color:#1e293b; flex-shrink:0;
+}
+#sidebarToggle:hover { background:#f8fafc; }
+
+/* topbar */
+.topbar { display:flex; align-items:center; gap:12px; margin-bottom:1.4rem; flex-wrap:wrap; }
+.topbar-title { font-size:1.2rem; font-weight:700; color:#1e293b; margin:0; }
+.topbar-sub { font-size:.8rem; color:#64748b; margin:0; }
+
+/* kpi row */
+.kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:.9rem; margin-bottom:1.4rem; }
+@media(max-width:1100px){ .kpi-row { grid-template-columns:repeat(2,1fr); } }
+@media(max-width:576px){ .kpi-row { grid-template-columns:1fr 1fr; } }
+.kpi {
+  background:white; border-radius:1.1rem; padding:1.1rem 1.2rem;
+  box-shadow:0 2px 12px rgba(0,0,0,.04); border:1px solid #f1f5f9;
+  border-left:5px solid var(--c,#f97316);
+  transition:transform .2s;
+}
+.kpi:hover { transform:translateY(-3px); }
+.kpi .kl { font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:#64748b; font-weight:600; }
+.kpi .kv { font-size:1.85rem; font-weight:700; line-height:1.1; color:var(--c,#f97316); }
+.kpi .ks { font-size:.72rem; color:#94a3b8; }
+
+/* table card */
+.tbl-card { background:white; border-radius:1.1rem; box-shadow:0 2px 12px rgba(0,0,0,.04); border:1px solid #f1f5f9; overflow:hidden; }
+.tbl-card-hd { padding:.9rem 1.1rem; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.tbl-card-hd h6 { margin:0; font-weight:700; color:#1e293b; font-size:.9rem; display:flex; align-items:center; gap:7px; }
+.icon-box { width:30px; height:30px; border-radius:8px; background:rgba(249,115,22,.1);
+  display:flex; align-items:center; justify-content:center; color:#f97316; font-size:.85rem; }
+.tbl-actions { margin-left:auto; display:flex; gap:7px; align-items:center; flex-wrap:wrap; }
+.tbl-search { position:relative; }
+.tbl-search input {
+  border:1px solid #e2e8f0; border-radius:10px; padding:6px 12px 6px 32px;
+  font-size:.83rem; font-family:'Prompt',sans-serif; width:200px; outline:none;
+  transition:border-color .2s;
+}
+.tbl-search input:focus { border-color:#f97316; }
+.tbl-search i { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:.78rem; }
+.sel-filter {
+  border:1px solid #e2e8f0; border-radius:10px; padding:6px 10px;
+  font-size:.82rem; font-family:'Prompt',sans-serif; color:#475569; outline:none; background:white;
+}
+.sel-filter:focus { border-color:#f97316; }
+
+.table { font-size:.85rem; }
+.table thead th { background:#f8fafc; font-weight:700; color:#475569; font-size:.72rem;
+  text-transform:uppercase; letter-spacing:.04em; padding:10px 12px;
+  border-bottom:2px solid #e2e8f0; white-space:nowrap; }
+.table tbody td { padding:9px 12px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+.table tbody tr:last-child td { border-bottom:none; }
+.table tbody tr:hover { background:rgba(249,115,22,.025); }
+
+.btn-tbl { padding:4px 9px; border-radius:7px; font-size:.74rem; font-weight:600;
+  border:none; cursor:pointer; transition:all .2s; font-family:'Prompt',sans-serif; }
+.btn-tbl-v { background:#f0fdf4; color:#166534; }  .btn-tbl-v:hover { background:#dcfce7; }
+.btn-tbl-e { background:#dbeafe; color:#1d4ed8; }  .btn-tbl-e:hover { background:#bfdbfe; }
+.btn-tbl-d { background:#fee2e2; color:#b91c1c; }  .btn-tbl-d:hover { background:#fecaca; }
+
+.sp { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:999px; font-size:.72rem; font-weight:600; }
+.sp-ok  { background:#d1fae5; color:#065f46; }
+.sp-don { background:#fef3c7; color:#92400e; }
+.sp-brw { background:#dbeafe; color:#1e40af; }
+.sp-ret { background:#f0fdf4; color:#15803d; }
+.sp-fix { background:#fee2e2; color:#991b1b; }
+.sp-rev { background:#f3e8ff; color:#6b21a8; }
+.id-b { font-size:.68rem; font-family:monospace; background:#f1f5f9; color:#475569; padding:2px 6px; border-radius:6px; }
+
+/* img thumbnail in table */
+.thumb-wrap { width:44px; height:44px; border-radius:8px; overflow:hidden;
+  border:1.5px solid #e2e8f0; display:flex; align-items:center; justify-content:center;
+  background:#f8fafc; flex-shrink:0; }
+.thumb-wrap img { width:100%; height:100%; object-fit:cover; cursor:pointer; }
+.thumb-wrap .no-img { font-size:1.2rem; color:#cbd5e1; }
+
+/* pagination */
+.pg-bar { display:flex; align-items:center; justify-content:space-between;
+  padding:.7rem 1.1rem; border-top:1px solid #f1f5f9; font-size:.79rem; color:#64748b; flex-wrap:wrap; gap:8px; }
+.pager { display:flex; gap:4px; }
+.pg-btn { width:29px; height:29px; border-radius:7px; border:1.5px solid #e2e8f0;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  font-size:.78rem; transition:all .2s; background:white; color:#475569; }
+.pg-btn.active { background:#f97316; color:white; border-color:#f97316; }
+.pg-btn:hover:not(.active) { border-color:#f97316; color:#f97316; }
+
+/* ── modal ── */
+.modal-ov { display:none; position:fixed; inset:0; z-index:9998;
+  background:rgba(15,23,42,.48); backdrop-filter:blur(4px);
+  align-items:center; justify-content:center; }
+.modal-ov.show { display:flex; }
+.modal-box {
+  background:white; border-radius:1.4rem; width:100%; max-width:700px; max-height:90vh;
+  overflow-y:auto; margin:1rem;
+  box-shadow:0 30px 70px rgba(0,0,0,.22); animation:slideUp .22s ease;
+}
+@keyframes slideUp { from{transform:translateY(28px);opacity:0} to{transform:translateY(0);opacity:1} }
+.modal-hd {
+  background:linear-gradient(135deg,#f97316,#fb923c); color:white;
+  padding:1.2rem 1.5rem; border-radius:1.4rem 1.4rem 0 0;
+  display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:2;
+}
+.modal-hd h5 { margin:0; font-weight:700; font-size:1rem; }
+.modal-close { background:rgba(255,255,255,.2); border:none; color:white; width:30px; height:30px;
+  border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:background .2s; }
+.modal-close:hover { background:rgba(255,255,255,.35); }
+.modal-bd { padding:1.4rem 1.5rem; }
+.modal-ft { padding:.9rem 1.5rem; border-top:1px solid #f1f5f9;
+  display:flex; justify-content:flex-end; gap:8px; position:sticky; bottom:0; background:white; z-index:2; }
+
+/* form grid */
+.fg { display:grid; grid-template-columns:1fr 1fr; gap:.9rem; }
+@media(max-width:560px){ .fg { grid-template-columns:1fr; } }
+.fg .fc { grid-column:1/-1; }
+.flb { display:block; font-size:.8rem; font-weight:600; color:#374151; margin-bottom:4px; }
+.flb .req { color:#ef4444; }
+.fi {
+  width:100%; border:1.5px solid #e2e8f0; border-radius:10px;
+  padding:8px 12px; font-size:.86rem; font-family:'Prompt',sans-serif;
+  outline:none; transition:border-color .2s, box-shadow .2s; background:white;
+}
+.fi:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,115,22,.1); }
+.fst { font-size:.76rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em;
+  color:#f97316; border-bottom:1.5px solid rgba(249,115,22,.2);
+  padding-bottom:5px; margin-bottom:.8rem; margin-top:.9rem; }
+
+/* ── image upload ── */
+.img-upload-area {
+  border:2px dashed #e2e8f0; border-radius:1rem; padding:1.2rem; text-align:center;
+  cursor:pointer; transition:all .25s; background:#fafafa; position:relative;
+}
+.img-upload-area:hover, .img-upload-area.dragover {
+  border-color:#f97316; background:rgba(249,115,22,.04);
+}
+.img-upload-area input[type=file] { display:none; }
+.img-upload-icon { font-size:2rem; color:#cbd5e1; margin-bottom:6px; }
+.img-upload-area p { margin:0; font-size:.8rem; color:#94a3b8; }
+.img-upload-area .ul-hint { font-size:.72rem; color:#cbd5e1; margin-top:3px; }
+.img-preview-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(80px,1fr)); gap:8px; margin-top:.9rem; }
+.img-preview-item {
+  position:relative; border-radius:8px; overflow:hidden;
+  aspect-ratio:1; border:1.5px solid #e2e8f0;
+}
+.img-preview-item img { width:100%; height:100%; object-fit:cover; }
+.img-preview-item .del-img {
+  position:absolute; top:3px; right:3px; background:rgba(239,68,68,.9);
+  color:white; border:none; border-radius:5px; width:20px; height:20px;
+  font-size:.65rem; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:background .2s;
+}
+.img-preview-item .del-img:hover { background:#dc2626; }
+.img-count-badge { display:inline-flex; align-items:center; gap:4px; background:rgba(249,115,22,.1);
+  color:#ea580c; border-radius:6px; padding:2px 8px; font-size:.72rem; font-weight:600; }
+
+/* lightbox */
+.lightbox { display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,.88);
+  align-items:center; justify-content:center; }
+.lightbox.show { display:flex; }
+.lightbox img { max-width:90vw; max-height:88vh; border-radius:.75rem;
+  box-shadow:0 25px 60px rgba(0,0,0,.5); }
+.lightbox-close { position:absolute; top:16px; right:20px; background:rgba(255,255,255,.15);
+  border:none; color:white; width:36px; height:36px; border-radius:10px;
+  font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.lightbox-close:hover { background:rgba(255,255,255,.3); }
+
+/* buttons */
+.btn-add { background:linear-gradient(135deg,#f97316,#fb923c); color:white; border:none;
+  padding:8px 15px; border-radius:10px; font-weight:600; font-size:.83rem;
+  font-family:'Prompt',sans-serif; cursor:pointer; transition:all .2s;
+  display:flex; align-items:center; gap:6px; }
+.btn-add:hover { box-shadow:0 6px 15px rgba(249,115,22,.35); transform:translateY(-1px); }
+.btn-out { background:white; color:#475569; border:1.5px solid #e2e8f0;
+  padding:7px 13px; border-radius:10px; font-weight:600; font-size:.83rem;
+  font-family:'Prompt',sans-serif; cursor:pointer; transition:all .2s;
+  display:flex; align-items:center; gap:6px; }
+.btn-out:hover { border-color:#94a3b8; background:#f8fafc; }
+
+/* loader */
+.loader-container { position:fixed; inset:0; background:rgba(255,255,255,.93);
+  z-index:99999; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; transition:opacity .3s,visibility .3s; }
+.loader-container.loader-hidden { opacity:0; visibility:hidden; pointer-events:none; }
+.spinner { width:50px; height:50px; border:5px solid #f3f3f3; border-top:5px solid #f97316;
+  border-radius:50%; animation:spin .9s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* empty */
+.empty-st { text-align:center; padding:2.5rem 1rem; color:#94a3b8; }
+.empty-st i { font-size:2.2rem; margin-bottom:.6rem; display:block; }
+
+@media(max-width:768px){
+  #sidebar { position:fixed; z-index:1050; margin-left:-240px; }
+  #sidebar.active { margin-left:0; }
+  .sb-close { display:block; }
+  #main-content { padding:.8rem; }
+  .tbl-search input { width:150px; }
+}
+</style>
+</head>
+<body>
+
+<?!= include('Common_Navbar'); ?>
+
+<!-- loader -->
+<div id="pageLoader" class="loader-container">
+  <div class="spinner"></div>
+  <div class="mt-3 fw-bold text-secondary" style="font-size:.88rem" id="loaderText">กำลังโหลดข้อมูล...</div>
+</div>
+
+<div class="page-wrapper">
+
+  <!-- ===== SIDEBAR ===== -->
+  <div id="sidebar">
+    <div class="sidebar-logo">
+      <button class="sb-close" onclick="closeSB()"><i class="fas fa-times"></i></button>
+      <div style="font-size:1.7rem;margin-bottom:4px">📦</div>
+      <h5>คลังพัสดุ TIJ</h5>
+      <small>ระบบจัดการทรัพย์สิน</small>
+    </div>
+    <div class="px-2 mt-2">
+      <div class="sidebar-section-label">หน้าหลัก</div>
+      <a class="nav-link" onclick="navigateTo('durable_dashboard')"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+
+      <div class="sidebar-section-label">วัสดุ &amp; ครุภัณฑ์</div>
+      <a class="nav-link active" id="nav-consumable" onclick="switchSection('consumable')">
+        <i class="fas fa-boxes"></i> วัสดุสำนักงาน<span class="nbadge" id="nb-consumable">—</span>
+      </a>
+      <a class="nav-link" id="nav-durable" onclick="switchSection('durable')">
+        <i class="fas fa-laptop"></i> ครุภัณฑ์<span class="nbadge" id="nb-durable">—</span>
+      </a>
+
+      <div class="sidebar-section-label">การเคลื่อนไหว</div>
+      <a class="nav-link" id="nav-borrow" onclick="switchSection('borrow')">
+        <i class="fas fa-hand-holding"></i> เบิก / ยืม<span class="nbadge" id="nb-borrow">—</span>
+      </a>
+      <a class="nav-link" id="nav-return" onclick="switchSection('return')">
+        <i class="fas fa-undo-alt"></i> คืนครุภัณฑ์<span class="nbadge" id="nb-return">—</span>
+      </a>
+
+      <div class="sidebar-section-label">จัดการ</div>
+      <a class="nav-link" onclick="navigateTo('durable_bulk_claim')"><i class="fas fa-layer-group"></i> เบิกจำนวนมาก</a>
+      <a class="nav-link" onclick="navigateTo('durable_user_management')"><i class="fas fa-users-cog"></i> จัดการสมาชิก</a>
+    </div>
+  </div>
+
+  <!-- ===== MAIN ===== -->
+  <div id="main-content">
+    <div id="sidebarOverlay" onclick="closeSB()"></div>
+
+    <!-- topbar -->
+    <div class="topbar">
+      <div id="sidebarToggle" onclick="toggleSB()"><i class="fas fa-bars" style="font-size:.85rem"></i></div>
+      <div>
+        <p class="topbar-title" id="pgTitle">📦 วัสดุสำนักงาน</p>
+        <p class="topbar-sub"  id="pgSub">รายการวัสดุและสิ้นเปลืองทั้งหมดในคลัง</p>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn-out" onclick="exportCSV()"><i class="fas fa-download"></i> Export CSV</button>
+        <button class="btn-add" onclick="openAddModal()"><i class="fas fa-plus"></i> เพิ่มรายการ</button>
+      </div>
+    </div>
+
+    <!-- kpi -->
+    <div class="kpi-row" id="kpiRow">
+      <div class="kpi" style="--c:#f97316"><span class="kl" id="kl1">รายการทั้งหมด</span><span class="kv" id="kv1">—</span><span class="ks" id="ks1">รายการในระบบ</span></div>
+      <div class="kpi" style="--c:#10b981"><span class="kl" id="kl2">สถานะปกติ</span><span class="kv" id="kv2">—</span><span class="ks" id="ks2">พร้อมใช้งาน</span></div>
+      <div class="kpi" style="--c:#f59e0b"><span class="kl" id="kl3">รอดำเนินการ</span><span class="kv" id="kv3">—</span><span class="ks" id="ks3">รอบริจาค/พิจารณา</span></div>
+      <div class="kpi" style="--c:#0ea5e9"><span class="kl" id="kl4">มูลค่ารวม</span><span class="kv" id="kv4">—</span><span class="ks" id="ks4">บาท</span></div>
+    </div>
+
+    <!-- table -->
+    <div class="tbl-card">
+      <div class="tbl-card-hd">
+        <div class="icon-box"><i class="fas fa-table" id="hdrIcon"></i></div>
+        <h6 id="tblTitle">รายการวัสดุสำนักงาน</h6>
+        <div class="tbl-actions">
+          <select class="sel-filter" id="fltStatus" onchange="applyFilters()">
+            <option value="">ทุกสถานะ</option>
+            <option value="ปกติ">ปกติ</option>
+            <option value="รอบริจาค">รอบริจาค</option>
+            <option value="เสนอพิจารณาบริจาค">เสนอพิจารณาบริจาค</option>
+            <option value="เบิก/ยืม">เบิก/ยืม</option>
+            <option value="คืนแล้ว">คืนแล้ว</option>
+          </select>
+          <div class="tbl-search">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchQ" placeholder="ค้นหา..." oninput="applyFilters()">
+          </div>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table mb-0" id="mainTable">
+          <thead id="tblHead"></thead>
+          <tbody id="tblBody"><tr><td colspan="10" class="text-center py-4 text-muted">กำลังโหลดข้อมูล...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="pg-bar">
+        <span id="pgInfo">แสดง 0 รายการ</span>
+        <div class="pager" id="pager"></div>
+      </div>
+    </div>
+  </div><!-- /main-content -->
+</div><!-- /page-wrapper -->
+
+<!-- ===== ADD/EDIT MODAL ===== -->
+<div class="modal-ov" id="itemModal">
+  <div class="modal-box">
+    <div class="modal-hd">
+      <h5 id="modalTitle"><i class="fas fa-plus-circle me-2"></i>เพิ่มรายการใหม่</h5>
+      <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-bd" id="modalBd"></div>
+    <div class="modal-ft">
+      <button class="btn-out" onclick="closeModal()"><i class="fas fa-times me-1"></i>ยกเลิก</button>
+      <button class="btn-add" onclick="saveItem()"><i class="fas fa-save me-1"></i>บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== VIEW MODAL ===== -->
+<div class="modal-ov" id="viewModal">
+  <div class="modal-box">
+    <div class="modal-hd" style="background:linear-gradient(135deg,#0ea5e9,#38bdf8)">
+      <h5><i class="fas fa-info-circle me-2"></i>รายละเอียด</h5>
+      <button class="modal-close" onclick="closeView()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-bd" id="viewBd"></div>
+  </div>
+</div>
+
+<!-- ===== LIGHTBOX ===== -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()"><i class="fas fa-times"></i></button>
+  <img id="lbImg" src="" alt="preview">
+</div>
+
+<?!= include('Common_JS'); ?>
+<script>
+/* ============================================================
+   MOCK DATA
+============================================================ */
+const DB = {
+  consumable: [
+    { id:'1.41115E7', name:'กระดาษถ่ายเอกสาร A4 80g (500แผ่น/รีม)', unit:'รีม', year:'2566', price:128.40, count:400, total:51360, dateBuy:'01/01/2566', expire:'31/12/2568', note:'สต็อกหลัก', status:'ปกติ', images:[] },
+    { id:'1.41115E7', name:'โพสอิท ขนาด 3x3 นิ้ว คละสี (1x5 เล่ม)', unit:'เล่ม', year:'2566', price:48.15, count:15, total:722.25, dateBuy:'15/03/2566', expire:'-', note:'', status:'ปกติ', images:[] },
+    { id:'1.41115E7', name:'กระดาษการ์ดสี 160แกรม (50แผ่น/แพ็ค)', unit:'แพ็ค', year:'2566', price:171.20, count:12, total:2054.40, dateBuy:'10/02/2566', expire:'-', note:'', status:'ปกติ', images:[] },
+    { id:'2.61117E7', name:'ถ่านอัลคาไลน์ พานาโซนิค AA (แพ็คละ2ก้อน)', unit:'แพ็ค', year:'2565', price:74.90, count:23, total:1722.70, dateBuy:'05/06/2565', expire:'30/06/2567', note:'', status:'ปกติ', images:[] },
+    { id:'3.12016E7', name:'เทปโฟม 2 หน้า 21 มม. 3 เมตร', unit:'ม้วน', year:'2565', price:104.86, count:61, total:6396.46, dateBuy:'20/08/2565', expire:'-', note:'', status:'ปกติ', images:[] },
+    { id:'3.91217E7', name:'ปลั๊กไฟ 5 เต้ารับ ยาว 5 เมตร (TOSHINO)', unit:'อัน', year:'2565', price:738.30, count:14, total:10336.20, dateBuy:'01/09/2565', expire:'-', note:'', status:'ปกติ', images:[] },
+    { id:'3.11515E7', name:'เชือกฟาง', unit:'ม้วน', year:'2565', price:135.89, count:8, total:1087.12, dateBuy:'10/05/2565', expire:'-', note:'', status:'รอบริจาค', images:[] },
+  ],
+  durable: [
+    { id:'ยธ.สธท.7110-002-0001/56', name:'เก้าอี้ทำงานผู้บริหาร บุหนังแท้', model:'PLT304 ไฮโดรลิค', size:'-', color:'-', sn:'-', dateIn:'2556', value:18190, owner:'ดร.นัทธี จิตสว่าง', location:'ชั้น 5 - ห้องทำงาน (2)', status:'ปกติ', images:[] },
+    { id:'ยธ.สธท.7110-001-0005/57', name:'(F-10) โต๊ะวิทยากร', model:'PERFECT AFD-1860M', size:'-', color:'-', sn:'-', dateIn:'2557', value:6666, owner:'ผอ.สำนักบริหาร', location:'ชั้น B - ห้องเก็บของ', status:'รอบริจาค', images:[] },
+    { id:'ยธ.สธท.7110-001-0148/57', name:'(F-31) โต๊ะทำงาน ED', model:'SF-TBL+SF_MB', size:'-', color:'-', sn:'-', dateIn:'2557', value:82390, owner:'ผอ.สถาบันฯ', location:'ชั้น 4', status:'ปกติ', images:[] },
+    { id:'ยธ.สธท.7110-001-0150/57', name:'(F-40) โต๊ะทรงงาน', model:'ASCOAT 4012 POPUP', size:'-', color:'-', sn:'-', dateIn:'2557', value:128400, owner:'-', location:'ชั้น 5 - ห้องทำงาน (1)', status:'ปกติ', images:[] },
+    { id:'ยธ.สธท.7110-002-0089/57', name:'(F-18) เก้าอี้อาร์มแชร์', model:'QUALIFINE AC-108', size:'45x45x60 ซม.', color:'-', sn:'-', dateIn:'2557', value:23005, owner:'ผอ.สำนักบริหาร', location:'ชั้น 3 - Town Hall', status:'ปกติ', images:[] },
+    { id:'ยธ.สธท.7110-001-0022/57', name:'(F-10.1) โต๊ะ Training', model:'PERFECT AFD-1560M', size:'-', color:'-', sn:'-', dateIn:'2557', value:6217, owner:'ผอ.สำนักบริหาร', location:'ชั้น B - ห้องเก็บของ', status:'เสนอพิจารณาบริจาค', images:[] },
+  ],
+  borrow: [
+    { id:'ยธ.สธท.7110-002-0001/56', name:'เก้าอี้ทำงานผู้บริหาร', model:'PLT304', borrow:'เบิก', borrower:'สมชาย ใจดี', borrowDate:'10/05/2568', returnDate:'20/05/2568', remark:'ใช้งานชั่วคราว', status:'เบิก/ยืม', location:'ชั้น 5', responsible:'เจ้าหน้าที่ IT', images:[] },
+    { id:'1.41115E7', name:'กระดาษถ่ายเอกสาร A4', model:'-', borrow:'เบิก', borrower:'สุดา รักงาน', borrowDate:'08/05/2568', returnDate:'-', remark:'ใช้สำนักงาน', status:'เบิก/ยืม', location:'คลัง', responsible:'พัสดุ', images:[] },
+  ],
+  return: [
+    { id:'ยธ.สธท.7110-002-0089/57', name:'เก้าอี้อาร์มแชร์', model:'QUALIFINE AC-108', returnStatus:'คืนแล้ว', returner:'สมชาย ใจดี', returnDate:'18/05/2568', remark:'สภาพดี', status:'คืนแล้ว', location:'ชั้น 3', responsible:'เจ้าหน้าที่ IT', images:[] },
+  ]
+};
+
+/* ============================================================
+   STATE
+============================================================ */
+let curSec = 'consumable';
+let filteredData = [];
+let curPage = 1;
+const PG = 10;
+let editIdx = -1;
+// pending images during modal edit (array of {dataUrl, name})
+let pendingImgs = [];
+
+/* ============================================================
+   SECTION META
+============================================================ */
+const META = {
+  consumable: {
+    title:'📦 วัสดุสำนักงาน', sub:'รายการวัสดุและสิ้นเปลืองทั้งหมดในคลัง',
+    tblTitle:'รายการวัสดุสำนักงาน', icon:'fa-boxes',
+    cols:['รูปภาพ','รหัสวัสดุ','ชื่อรายการ','หน่วยนับ','ราคา/หน่วย','จำนวน','มูลค่ารวม','สถานะ','จัดการ'],
+    kl:['รายการทั้งหมด','คงคลัง (ชิ้น)','รอดำเนินการ','มูลค่ารวม (บาท)'],
+    ks:['รายการในระบบ','จำนวนรวม','รอบริจาค/พิจารณา','มูลค่าคลังวัสดุ']
+  },
+  durable: {
+    title:'🖥️ ครุภัณฑ์', sub:'ทะเบียนครุภัณฑ์และสินทรัพย์ถาวร',
+    tblTitle:'ทะเบียนครุภัณฑ์', icon:'fa-laptop',
+    cols:['รูปภาพ','รหัสครุภัณฑ์','รายการ','รุ่น/แบบ','มูลค่า (บาท)','ผู้ถือครอง','สถานที่ตั้ง','สถานะ','จัดการ'],
+    kl:['ครุภัณฑ์ทั้งหมด','สภาพปกติ','รอดำเนินการ','มูลค่ารวม (บาท)'],
+    ks:['รายการในทะเบียน','พร้อมใช้งาน','รอบริจาค/พิจารณา','มูลค่าครุภัณฑ์']
+  },
+  borrow: {
+    title:'🤝 เบิก / ยืม', sub:'รายการเบิกและยืมครุภัณฑ์',
+    tblTitle:'รายการเบิก/ยืม', icon:'fa-hand-holding',
+    cols:['รูปภาพ','รหัส','ชื่อรายการ','ประเภท','ผู้เบิก/ยืม','วันที่เบิก','วันที่คืน','สถานะ','จัดการ'],
+    kl:['รายการทั้งหมด','กำลังยืม','คืนแล้ว','คงค้าง (วัน)'],
+    ks:['รายการเบิก/ยืม','ยังไม่คืน','คืนเรียบร้อย','เฉลี่ย']
+  },
+  return: {
+    title:'↩️ การคืนครุภัณฑ์', sub:'ประวัติการคืนครุภัณฑ์และวัสดุ',
+    tblTitle:'รายการคืน', icon:'fa-undo-alt',
+    cols:['รูปภาพ','รหัส','ชื่อรายการ','ผู้คืน','วันที่คืน','หมายเหตุ','สถานะ','จัดการ'],
+    kl:['รายการทั้งหมด','คืนแล้ว','รอตรวจสอบ','วันนี้'],
+    ks:['รายการคืน','เรียบร้อย','รอตรวจ','คืนวันนี้']
+  }
+};
+
+/* ============================================================
+   INIT
+============================================================ */
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(() => document.getElementById('pageLoader').classList.add('loader-hidden'), 600);
+  if (typeof google !== 'undefined' && google.script) {
+    google.script.run
+      .withSuccessHandler(d => { if(d) Object.assign(DB, d); renderSection('consumable'); })
+      .withFailureHandler(() => renderSection('consumable'))
+      .getAllEquipmentData();
+  } else {
+    renderSection('consumable');
+  }
+});
+
+/* ============================================================
+   SWITCH SECTION
+============================================================ */
+function switchSection(sec) {
+  curSec = sec;
+  ['consumable','durable','borrow','return'].forEach(s =>
+    document.getElementById('nav-'+s).classList.toggle('active', s === sec));
+  renderSection(sec);
+  if (window.innerWidth <= 768) closeSB();
+}
+
+function renderSection(sec) {
+  const m = META[sec];
+  const data = DB[sec] || [];
+  document.getElementById('pgTitle').textContent = m.title;
+  document.getElementById('pgSub').textContent = m.sub;
+  document.getElementById('tblTitle').textContent = m.tblTitle;
+  document.getElementById('hdrIcon').className = 'fas ' + m.icon;
+  ['consumable','durable','borrow','return'].forEach(s =>
+    document.getElementById('nb-'+s).textContent = DB[s].length);
+  updateKPIs(sec, data, m);
+  document.getElementById('tblHead').innerHTML = '<tr>' + m.cols.map(c=>`<th>${c}</th>`).join('') + '</tr>';
+  document.getElementById('searchQ').value = '';
+  document.getElementById('fltStatus').value = '';
+  filteredData = data.slice();
+  curPage = 1;
+  renderTable();
+}
+
+/* ============================================================
+   KPIs
+============================================================ */
+function updateKPIs(sec, data, m) {
+  let v1,v2,v3,v4;
+  if (sec === 'consumable') {
+    v1 = data.length; v2 = data.reduce((s,r)=>s+(r.count||0),0).toLocaleString();
+    v3 = data.filter(r=>r.status!=='ปกติ').length;
+    v4 = '฿'+data.reduce((s,r)=>s+(r.total||0),0).toLocaleString('th-TH',{maximumFractionDigits:0});
+  } else if (sec === 'durable') {
+    v1 = data.length; v2 = data.filter(r=>r.status==='ปกติ').length;
+    v3 = data.filter(r=>r.status!=='ปกติ').length;
+    v4 = '฿'+data.reduce((s,r)=>s+(r.value||0),0).toLocaleString('th-TH',{maximumFractionDigits:0});
+  } else if (sec === 'borrow') {
+    v1 = data.length; v2 = data.filter(r=>r.status==='เบิก/ยืม').length;
+    v3 = data.filter(r=>r.status==='คืนแล้ว').length; v4 = '~7';
+  } else {
+    v1 = data.length; v2 = data.filter(r=>r.status==='คืนแล้ว').length;
+    v3 = data.filter(r=>r.status!=='คืนแล้ว').length; v4 = 0;
+  }
+  ['1','2','3','4'].forEach((n,i) => {
+    document.getElementById('kv'+n).textContent = [v1,v2,v3,v4][i];
+    document.getElementById('kl'+n).textContent = m.kl[i];
+    document.getElementById('ks'+n).textContent = m.ks[i];
+  });
+}
+
+/* ============================================================
+   FILTER
+============================================================ */
+function applyFilters() {
+  const q = document.getElementById('searchQ').value.toLowerCase().trim();
+  const st = document.getElementById('fltStatus').value;
+  filteredData = (DB[curSec]||[]).filter(r => {
+    const mQ = !q || JSON.stringify(r).toLowerCase().includes(q);
+    const mS = !st || r.status === st;
+    return mQ && mS;
+  });
+  curPage = 1; renderTable();
+}
+
+/* ============================================================
+   RENDER TABLE
+============================================================ */
+function sp(st) {
+  const map = {
+    'ปกติ':'<span class="sp sp-ok">✔ ปกติ</span>',
+    'รอบริจาค':'<span class="sp sp-don">⏳ รอบริจาค</span>',
+    'เสนอพิจารณาบริจาค':'<span class="sp sp-rev">🔍 พิจารณา</span>',
+    'เบิก/ยืม':'<span class="sp sp-brw">🤝 เบิก/ยืม</span>',
+    'คืนแล้ว':'<span class="sp sp-ret">↩ คืนแล้ว</span>',
+    'ซ่อม':'<span class="sp sp-fix">🔧 ซ่อม</span>',
+  };
+  return map[st]||`<span class="sp sp-ok">${st}</span>`;
+}
+
+function thumbHtml(imgs, gi) {
+  if (!imgs || !imgs.length) return `<div class="thumb-wrap"><span class="no-img"><i class="fas fa-image"></i></span></div>`;
+  return `<div class="thumb-wrap"><img src="${imgs[0].dataUrl||imgs[0]}" onclick="openLB('${gi}')" title="คลิกดูภาพ"></div>`;
+}
+
+function buildRow(row, gi) {
+  const acts = `
+    <button class="btn-tbl btn-tbl-v me-1" onclick="viewItem(${gi})"><i class="fas fa-eye"></i></button>
+    <button class="btn-tbl btn-tbl-e me-1" onclick="openEditModal(${gi})"><i class="fas fa-pen"></i></button>
+    <button class="btn-tbl btn-tbl-d" onclick="deleteItem(${gi})"><i class="fas fa-trash"></i></button>`;
+  const th = thumbHtml(row.images, gi);
+  if (curSec === 'consumable') return `<tr>
+    <td>${th}</td>
+    <td><span class="id-b">${row.id}</span></td>
+    <td style="max-width:200px;white-space:normal;font-size:.82rem">${row.name}</td>
+    <td>${row.unit}</td>
+    <td>฿${(row.price||0).toLocaleString('th-TH',{minimumFractionDigits:2})}</td>
+    <td><strong>${row.count||0}</strong></td>
+    <td>฿${(row.total||0).toLocaleString('th-TH',{maximumFractionDigits:0})}</td>
+    <td>${sp(row.status)}</td><td>${acts}</td></tr>`;
+  if (curSec === 'durable') return `<tr>
+    <td>${th}</td>
+    <td><span class="id-b" style="font-size:.62rem">${row.id}</span></td>
+    <td style="max-width:180px;white-space:normal;font-size:.82rem">${row.name}</td>
+    <td style="font-size:.79rem">${row.model||'-'}</td>
+    <td>฿${(row.value||0).toLocaleString('th-TH',{maximumFractionDigits:0})}</td>
+    <td style="font-size:.79rem;max-width:120px">${row.owner||'-'}</td>
+    <td style="font-size:.78rem;max-width:140px">${row.location||'-'}</td>
+    <td>${sp(row.status)}</td><td>${acts}</td></tr>`;
+  if (curSec === 'borrow') return `<tr>
+    <td>${th}</td>
+    <td><span class="id-b" style="font-size:.62rem">${row.id}</span></td>
+    <td style="max-width:160px;white-space:normal;font-size:.82rem">${row.name}</td>
+    <td><span class="sp ${row.borrow==='เบิก'?'sp-brw':'sp-rev'}">${row.borrow}</span></td>
+    <td>${row.borrower}</td><td>${row.borrowDate}</td><td>${row.returnDate||'-'}</td>
+    <td>${sp(row.status)}</td><td>${acts}</td></tr>`;
+  return `<tr>
+    <td>${th}</td>
+    <td><span class="id-b" style="font-size:.62rem">${row.id}</span></td>
+    <td style="max-width:160px;white-space:normal;font-size:.82rem">${row.name}</td>
+    <td>${row.returner}</td><td>${row.returnDate}</td>
+    <td style="font-size:.79rem">${row.remark||'-'}</td>
+    <td>${sp(row.status)}</td><td>${acts}</td></tr>`;
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tblBody');
+  const start = (curPage-1)*PG;
+  const page  = filteredData.slice(start, start+PG);
+  if (!page.length) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-st"><i class="fas fa-inbox"></i>ไม่พบข้อมูล</div></td></tr>`;
+    updatePG(0); return;
+  }
+  tbody.innerHTML = page.map((r,i) => buildRow(r, start+i)).join('');
+  updatePG(filteredData.length);
+}
+
+/* ============================================================
+   PAGINATION
+============================================================ */
+function updatePG(total) {
+  const tp = Math.ceil(total/PG);
+  const s = (curPage-1)*PG+1, e = Math.min(curPage*PG, total);
+  document.getElementById('pgInfo').textContent = total
+    ? `แสดง ${s}–${e} จาก ${total} รายการ` : 'ไม่พบข้อมูล';
+  const pg = document.getElementById('pager'); pg.innerHTML = '';
+  const mkBtn = (lbl, en, cb) => {
+    const b = document.createElement('div'); b.className='pg-btn'; b.textContent=lbl;
+    if (!en) { b.style.opacity='.35'; b.style.pointerEvents='none'; }
+    else b.addEventListener('click', cb); return b;
+  };
+  pg.appendChild(mkBtn('‹', curPage>1, ()=>{curPage--;renderTable();}));
+  for (let p=1;p<=tp;p++){
+    if (tp>7 && Math.abs(p-curPage)>2 && p!==1 && p!==tp) {
+      if (p===2||p===tp-1){ const d=document.createElement('div'); d.className='pg-btn'; d.textContent='…'; d.style.cursor='default'; pg.appendChild(d); }
+      continue;
+    }
+    const b = mkBtn(p, true, ()=>{curPage=p;renderTable();});
+    if (p===curPage) b.classList.add('active');
+    pg.appendChild(b);
+  }
+  pg.appendChild(mkBtn('›', curPage<tp, ()=>{curPage++;renderTable();}));
+}
+
+/* ============================================================
+   IMAGE UPLOAD COMPONENT
+============================================================ */
+function buildImgUpload(existingImgs) {
+  pendingImgs = existingImgs ? existingImgs.map(i => typeof i==='string' ? {dataUrl:i,name:'image'} : i) : [];
+  return `
+  <div class="fst"><i class="fas fa-images me-1"></i>รูปภาพ</div>
+  <div class="img-upload-area" id="imgDropZone" onclick="document.getElementById('imgFileInput').click()"
+    ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+    <input type="file" id="imgFileInput" multiple accept="image/*" onchange="handleImgSelect(event)">
+    <div class="img-upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+    <p><strong>คลิกเพื่อเลือกรูป</strong> หรือลากวางไฟล์ที่นี่</p>
+    <p class="ul-hint">รองรับ JPG, PNG, WEBP — สูงสุด 5 MB / ไฟล์</p>
+  </div>
+  <div class="img-preview-grid" id="imgPreviewGrid"></div>`;
+}
+
+function handleImgSelect(e) {
+  Array.from(e.target.files).forEach(processImgFile);
+  e.target.value = '';
+}
+function onDragOver(e) { e.preventDefault(); document.getElementById('imgDropZone').classList.add('dragover'); }
+function onDragLeave(e) { document.getElementById('imgDropZone').classList.remove('dragover'); }
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('imgDropZone').classList.remove('dragover');
+  Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('image/')).forEach(processImgFile);
+}
+function processImgFile(file) {
+  if (file.size > 5*1024*1024) { Swal.fire({icon:'warning',title:'ไฟล์ใหญ่เกินไป',text:'กรุณาเลือกไฟล์ขนาดไม่เกิน 5 MB',confirmButtonColor:'#f97316'}); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    pendingImgs.push({ dataUrl: ev.target.result, name: file.name });
+    renderImgPreviews();
+  };
+  reader.readAsDataURL(file);
+}
+function renderImgPreviews() {
+  const grid = document.getElementById('imgPreviewGrid');
+  if (!grid) return;
+  grid.innerHTML = pendingImgs.map((img,i) => `
+    <div class="img-preview-item">
+      <img src="${img.dataUrl}" onclick="openLBDirect('${img.dataUrl}')" title="${img.name}">
+      <button class="del-img" onclick="removePendingImg(${i})" title="ลบ"><i class="fas fa-times"></i></button>
+    </div>`).join('');
+  // update count badge on upload zone
+  const zone = document.getElementById('imgDropZone');
+  if (zone) {
+    const existing = zone.querySelector('.img-count-badge');
+    if (existing) existing.remove();
+    if (pendingImgs.length) {
+      const badge = document.createElement('div');
+      badge.className='img-count-badge mt-2';
+      badge.innerHTML=`<i class="fas fa-images"></i> ${pendingImgs.length} รูป`;
+      zone.appendChild(badge);
+    }
+  }
+}
+function removePendingImg(i) { pendingImgs.splice(i,1); renderImgPreviews(); }
+
+/* lightbox helpers */
+function openLB(gi) {
+  const row = filteredData[gi];
+  if (!row || !row.images || !row.images.length) return;
+  const src = row.images[0].dataUrl || row.images[0];
+  document.getElementById('lbImg').src = src;
+  document.getElementById('lightbox').classList.add('show');
+}
+function openLBDirect(src) {
+  document.getElementById('lbImg').src = src;
+  document.getElementById('lightbox').classList.add('show');
+}
+function closeLightbox() { document.getElementById('lightbox').classList.remove('show'); }
+
+/* ============================================================
+   MODAL FORMS
+============================================================ */
+const STATUSES = ['ปกติ','รอบริจาค','เสนอพิจารณาบริจาค','เบิก/ยืม','คืนแล้ว','ซ่อม'];
+const UNITS    = ['เล่ม','แพ็ค','รีม','ม้วน','อัน/ชิ้น','กล่อง','แท่ง'];
+const DEPTS    = ['OED','OSP','OM','Academy','OJI','OBR','EXPO','OPC','KCS','BSM','IT','Other'];
+
+function inp(id, lbl, val, type='text', opts=[]) {
+  if (opts.length) {
+    const os = opts.map(o=>`<option value="${o}" ${val===o?'selected':''}>${o}</option>`).join('');
+    return `<div><label class="flb">${lbl}</label><select class="fi" id="mf_${id}"><option value="">-- เลือก --</option>${os}</select></div>`;
+  }
+  return `<div><label class="flb">${lbl}</label><input type="${type}" class="fi" id="mf_${id}" value="${val||''}"></div>`;
+}
+
+function buildModalForm(row) {
+  const v = row||{};
+  const imgBlock = buildImgUpload(v.images);
+  if (curSec === 'consumable') return `
+    <div class="fst">ข้อมูลทั่วไป</div><div class="fg">
+    ${inp('id','รหัสวัสดุ',v.id)} ${inp('name','ชื่อรายการ',v.name)}
+    ${inp('unit','หน่วยนับ',v.unit,'text',UNITS)} ${inp('year','ปีที่ซื้อ (พ.ศ.)',v.year)}
+    ${inp('price','ราคา/หน่วย (บาท)',v.price,'number')} ${inp('count','จำนวนคงเหลือ',v.count,'number')}
+    ${inp('dateBuy','วันที่รับเข้าคลัง',v.dateBuy)} ${inp('expire','วันหมดอายุ',v.expire)}
+    <div class="fc">${inp('note','หมายเหตุ',v.note)}</div>
+    <div class="fc">${inp('status','สถานะ',v.status,'text',STATUSES)}</div>
+    </div><div class="fc">${imgBlock}</div>`;
+  if (curSec === 'durable') return `
+    <div class="fst">ข้อมูลครุภัณฑ์</div><div class="fg">
+    ${inp('id','รหัสครุภัณฑ์',v.id)} ${inp('name','รายการ',v.name)}
+    ${inp('model','รุ่น/แบบ',v.model)} ${inp('size','ขนาด',v.size)}
+    ${inp('color','สี',v.color)} ${inp('sn','Serial Number',v.sn)}
+    ${inp('dateIn','ปีที่รับเข้า (พ.ศ.)',v.dateIn)} ${inp('value','มูลค่า (บาท)',v.value,'number')}
+    ${inp('owner','ผู้ถือครอง',v.owner)} ${inp('location','สถานที่ตั้ง',v.location)}
+    <div class="fc">${inp('status','สถานะ',v.status,'text',STATUSES)}</div>
+    </div><div class="fc">${imgBlock}</div>`;
+  if (curSec === 'borrow') return `
+    <div class="fst">ข้อมูลการเบิก/ยืม</div><div class="fg">
+    ${inp('id','รหัสครุภัณฑ์/วัสดุ',v.id)} ${inp('name','ชื่อรายการ',v.name)}
+    ${inp('borrow','ประเภท',v.borrow,'text',['เบิก','ยืม'])} ${inp('borrower','ชื่อผู้เบิก/ยืม',v.borrower)}
+    ${inp('borrowDate','วันที่เบิก',v.borrowDate)} ${inp('returnDate','วันที่คืน (กำหนด)',v.returnDate)}
+    <div class="fc">${inp('remark','หมายเหตุ',v.remark)}</div>
+    <div class="fc">${inp('status','สถานะ',v.status,'text',['เบิก/ยืม','คืนแล้ว'])}</div>
+    </div><div class="fc">${imgBlock}</div>`;
+  return `
+    <div class="fst">ข้อมูลการคืน</div><div class="fg">
+    ${inp('id','รหัส',v.id)} ${inp('name','ชื่อรายการ',v.name)}
+    ${inp('returnStatus','สถานะการคืน',v.returnStatus,'text',['คืนแล้ว','รอตรวจสอบ'])} ${inp('returner','ชื่อผู้คืน',v.returner)}
+    ${inp('returnDate','วันที่คืน',v.returnDate)} ${inp('location','สถานที่จัดเก็บ',v.location)}
+    <div class="fc">${inp('remark','หมายเหตุ',v.remark)}</div>
+    <div class="fc">${inp('status','สถานะระบบ',v.status,'text',['คืนแล้ว','รอตรวจสอบ'])}</div>
+    </div><div class="fc">${imgBlock}</div>`;
+}
+
+function openAddModal() {
+  editIdx = -1;
+  document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus-circle me-2"></i>เพิ่มรายการใหม่';
+  document.getElementById('modalBd').innerHTML = buildModalForm(null);
+  renderImgPreviews();
+  document.getElementById('itemModal').classList.add('show');
+}
+function openEditModal(gi) {
+  editIdx = gi;
+  const row = filteredData[gi];
+  document.getElementById('modalTitle').innerHTML = '<i class="fas fa-pen me-2"></i>แก้ไขรายการ';
+  document.getElementById('modalBd').innerHTML = buildModalForm(row);
+  renderImgPreviews();
+  document.getElementById('itemModal').classList.add('show');
+}
+function closeModal() { document.getElementById('itemModal').classList.remove('show'); editIdx=-1; pendingImgs=[]; }
+function closeView()  { document.getElementById('viewModal').classList.remove('show'); }
+
+function saveItem() {
+  const fields = document.querySelectorAll('#modalBd [id^="mf_"]');
+  const obj = {};
+  fields.forEach(el => { obj[el.id.replace('mf_','')] = el.value; });
+  if (curSec === 'consumable') { obj.price=parseFloat(obj.price)||0; obj.count=parseFloat(obj.count)||0; obj.total=obj.price*obj.count; }
+  if (curSec === 'durable')    { obj.value = parseFloat(obj.value)||0; }
+  obj.images = pendingImgs.slice();
+
+  const data = DB[curSec];
+  if (editIdx >= 0) {
+    const real = data.indexOf(filteredData[editIdx]);
+    if (real >= 0) data[real] = {...data[real], ...obj};
+  } else { data.push(obj); }
+
+  closeModal();
+  renderSection(curSec);
+
+  if (typeof google !== 'undefined' && google.script) {
+    google.script.run
+      .withSuccessHandler(() => toast('success','บันทึกเรียบร้อยแล้ว'))
+      .withFailureHandler(e => toast('error','บันทึกไม่สำเร็จ'))
+      .saveEquipmentItem(curSec, obj, editIdx);
+  } else { toast('success','บันทึกข้อมูลสำเร็จ (Preview)'); }
+}
+
+/* ============================================================
+   VIEW DETAIL
+============================================================ */
+function viewItem(gi) {
+  const row = filteredData[gi]; if (!row) return;
+  const imgs = row.images||[];
+  const imgSection = imgs.length
+    ? `<div style="margin-bottom:1rem"><div style="font-size:.72rem;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:6px">รูปภาพ (${imgs.length})</div>
+       <div style="display:flex;gap:8px;flex-wrap:wrap">
+       ${imgs.map(img=>`<div style="width:72px;height:72px;border-radius:8px;overflow:hidden;border:1.5px solid #e2e8f0;cursor:pointer" onclick="openLBDirect('${img.dataUrl||img}')"><img src="${img.dataUrl||img}" style="width:100%;height:100%;object-fit:cover"></div>`).join('')}
+       </div></div>` : '';
+  const entries = Object.entries(row).filter(([k])=>k!=='images');
+  document.getElementById('viewBd').innerHTML = `
+    ${imgSection}
+    <div class="fg" style="gap:.6rem">
+    ${entries.map(([k,v])=>`<div style="background:#f8fafc;border-radius:.6rem;padding:.55rem .9rem">
+      <div style="font-size:.68rem;font-weight:700;color:#94a3b8;text-transform:uppercase">${k}</div>
+      <div style="font-size:.86rem;color:#1e293b;font-weight:500;margin-top:1px">${v||'-'}</div></div>`).join('')}
+    </div>`;
+  document.getElementById('viewModal').classList.add('show');
+}
+
+/* ============================================================
+   DELETE
+============================================================ */
+function deleteItem(gi) {
+  const row = filteredData[gi]; if (!row) return;
+  Swal.fire({ title:'ยืนยันการลบ', html:`ต้องการลบ <strong>${row.name||row.id}</strong>?`,
+    icon:'warning', showCancelButton:true, confirmButtonColor:'#ef4444',
+    cancelButtonColor:'#94a3b8', confirmButtonText:'ลบเลย', cancelButtonText:'ยกเลิก'
+  }).then(r => {
+    if (!r.isConfirmed) return;
+    const data = DB[curSec]; const ri = data.indexOf(row);
+    if (ri>=0) data.splice(ri,1);
+    renderSection(curSec); toast('success','ลบรายการเรียบร้อยแล้ว');
+  });
+}
+
+/* ============================================================
+   EXPORT CSV
+============================================================ */
+function exportCSV() {
+  const data = filteredData; if (!data.length) { toast('warning','ไม่มีข้อมูล'); return; }
+  const headers = Object.keys(data[0]).filter(k=>k!=='images');
+  const rows = [headers.join(','), ...data.map(r=>headers.map(h=>`"${(r[h]??'').toString().replace(/"/g,'""')}"`).join(','))];
+  const blob = new Blob(['\uFEFF'+rows.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`${curSec}_export.csv`; a.click();
+}
+
+/* ============================================================
+   SIDEBAR
+============================================================ */
+function toggleSB() {
+  const sb = document.getElementById('sidebar');
+  if (window.innerWidth<=768) {
+    sb.classList.toggle('active');
+    document.getElementById('sidebarOverlay').classList.toggle('active');
+  } else { sb.classList.toggle('collapsed'); }
+}
+function closeSB() {
+  document.getElementById('sidebar').classList.remove('active');
+  document.getElementById('sidebarOverlay').classList.remove('active');
+}
+
+/* ============================================================
+   NAVIGATE + TOAST
+============================================================ */
+function navigateTo(pg) {
+  const l = document.getElementById('pageLoader'); if(l) l.classList.remove('loader-hidden');
+  if (typeof google!=='undefined'&&google.script) {
+    google.script.run
+      .withSuccessHandler(html => { document.open(); document.write(html); document.close(); })
+      .withFailureHandler(e => { if(l) l.classList.add('loader-hidden'); Swal.fire('เกิดข้อผิดพลาด',e.toString(),'error'); })
+      .loadHtmlPage(pg);
+  } else { console.log('Navigate:',pg); if(l) l.classList.add('loader-hidden'); }
+}
+function toast(icon, title) {
+  if (typeof Swal!=='undefined') Swal.mixin({toast:true,position:'top-end',showConfirmButton:false,timer:3000,timerProgressBar:true}).fire({icon,title});
+}
+</script>
+</body>
+</html>
