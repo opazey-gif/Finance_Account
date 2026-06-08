@@ -1,0 +1,2150 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Office Finance Enterprise ERP</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+
+  <script>
+    tailwind.config = { theme: { extend: { colors: { primary: '#ED7D31', primaryHover: '#d96b26', secondary: '#5B9BD5', secondaryHover: '#4a8bc2', accent: '#FFC000' }, fontFamily: { sans: ['Prompt', 'sans-serif'] } } } }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Prompt', sans-serif;
+      background-color: #f1f5f9;
+      color: #334155;
+      overflow: hidden;
+      display: flex;
+    }
+
+    #sidebar {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 40;
+    }
+
+    .sidebar-expanded {
+      width: 16rem;
+    }
+
+    .sidebar-collapsed {
+      width: 5.5rem;
+    }
+
+    .sidebar-collapsed .nav-text,
+    .sidebar-collapsed .logo-text,
+    .sidebar-collapsed .nav-header {
+      display: none;
+    }
+
+    .sidebar-collapsed .nav-item {
+      justify-content: center;
+      padding-left: 0;
+      padding-right: 0;
+      margin-left: 0.5rem;
+      margin-right: 0.5rem;
+    }
+
+    .nav-item {
+      transition: all 0.2s;
+      border-left: 4px solid transparent;
+    }
+
+    .nav-item:hover {
+      background-color: rgba(237, 125, 49, 0.05);
+      color: #ED7D31;
+    }
+
+    .active-nav {
+      background-color: #ED7D31;
+      color: white !important;
+      font-weight: 700;
+      border-radius: 0.75rem;
+      box-shadow: 0 4px 6px -1px rgba(237, 125, 49, 0.2);
+    }
+
+    .tab-btn {
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .table-container {
+      max-height: calc(100vh - 300px);
+      overflow: auto;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    th:hover {
+      filter: brightness(0.95);
+    }
+
+    input,
+    select,
+    textarea {
+      transition: all 0.2s;
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: #5B9BD5;
+      box-shadow: 0 0 0 3px rgba(91, 155, 213, 0.15);
+      background-color: #fff;
+    }
+
+    .swal2-popup {
+      font-family: 'Prompt', sans-serif !important;
+      border-radius: 1.5rem !important;
+    }
+
+    .form-card {
+      background: white;
+      border-radius: 2rem;
+      padding: 1.5rem 2rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      border: 1px solid #e2e8f0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <datalist id="dl-roles">
+    <option value="Admin">
+    <option value="User">
+    <option value="Banned">
+  </datalist>
+  <datalist id="dl-dept"></datalist>
+  <datalist id="dl-fund"></datalist>
+  <datalist id="dl-method"></datalist>
+  <datalist id="dl-income"></datalist>
+
+  <div id="authOverlay"
+    class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center hidden">
+    <div class="bg-white p-10 rounded-[2rem] shadow-2xl max-w-md w-full text-center">
+      <div
+        class="w-20 h-20 bg-gradient-to-br from-primary to-accent rounded-2xl mx-auto flex items-center justify-center text-white mb-6 shadow-lg">
+        <i data-lucide="shield-check" size="40"></i>
+      </div>
+      <h2 class="text-2xl font-black text-slate-800 mb-2">เข้าสู่ระบบ ERP</h2>
+      <p class="text-slate-500 mb-6 text-sm">กรุณากรอกอีเมลเพื่อตรวจสอบสิทธิ์ หรือลงทะเบียน</p>
+      <input type="email" id="authEmail" class="w-full p-4 border border-slate-200 rounded-xl mb-4 text-center font-bold focus:border-primary" placeholder="ระบุอีเมลของคุณ...">
+      <div class="flex gap-2">
+        <button onclick="manualLogin()" class="w-full bg-primary hover:bg-primaryHover text-white py-4 rounded-xl font-black transition shadow-lg">ยืนยัน</button>
+        <button onclick="switchAccount()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-4 rounded-xl font-black transition border border-slate-200">สลับบัญชี Google</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="univModal"
+    class="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center hidden backdrop-blur-sm p-4 opacity-0 transition-opacity duration-300">
+    <div
+      class="bg-slate-50 rounded-[2rem] shadow-2xl max-w-6xl w-full flex flex-col max-h-[90vh] overflow-hidden transform scale-95 transition-transform duration-300"
+      id="univModalContent">
+      <div class="p-5 md:p-6 border-b border-slate-200 flex justify-between items-center bg-white shadow-sm z-10"
+        id="modalHeaderBg">
+        <h3 class="text-2xl font-black flex items-center gap-3" id="modalTitle"></h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-red-500 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition"><i data-lucide="x" size="24"></i></button>
+      </div>
+      <div id="modalBody" class="overflow-y-auto p-6 md:p-8 flex-grow relative space-y-6 hide-scrollbar"></div>
+      <div id="modalFooter"
+        class="p-5 border-t border-slate-200 flex justify-end gap-3 bg-white z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <button onclick="closeModal()" class="px-8 py-3 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-slate-600 transition">ปิดหน้าต่าง</button>
+        <button id="modalSaveBtn" onclick="saveEditData()" class="hidden px-10 py-3 bg-primary hover:bg-primaryHover text-white rounded-xl font-black shadow-lg flex items-center gap-2 transition">
+                    <i data-lucide="save" size="20"></i> บันทึกการแก้ไข
+                </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pdfModal"
+    class="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center hidden backdrop-blur-sm p-4 opacity-0 transition-opacity duration-300">
+    <div
+      class="bg-slate-50 rounded-[2rem] shadow-2xl max-w-3xl w-full flex flex-col max-h-[90vh] overflow-hidden transform scale-95 transition-transform duration-300"
+      id="pdfModalContent">
+      <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-white shadow-sm z-10">
+        <h3 class="text-xl font-black text-secondary flex items-center gap-2">
+          <div class="p-2 bg-blue-100 text-secondary rounded-lg"><i data-lucide="paperclip" size="18"></i></div>
+          จัดการไฟล์เอกสาร (PDF)
+        </h3>
+        <button onclick="closePdfModal()" class="text-slate-400 hover:text-red-500 bg-slate-100 p-2 rounded-full transition"><i data-lucide="x" size="20"></i></button>
+      </div>
+      <div class="overflow-y-auto p-6 flex-grow flex flex-col gap-6">
+        <div
+          class="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center hover:bg-slate-100 transition relative">
+          <input type="file" id="pdfUploader" accept="application/pdf" multiple class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="handleFileUpload(event)">
+          <i data-lucide="file-up" size="32" class="mx-auto text-slate-400 mb-2"></i>
+          <p class="font-bold text-slate-600">คลิก หรือ ลากไฟล์ PDF มาวางที่นี่</p>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+          <h4 class="text-sm font-bold text-slate-700 mb-3 border-b border-slate-100 pb-2">ไฟล์ที่แนบไว้</h4>
+          <ul id="pdfFileList" class="space-y-2"></ul>
+          <p id="noFilesMsg" class="text-center text-slate-400 text-xs py-4 hidden">ยังไม่มีไฟล์แนบ</p>
+        </div>
+      </div>
+      <div class="p-5 border-t border-slate-200 flex justify-between items-center bg-white z-10">
+        <button onclick="closePdfModal()" class="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-slate-600 transition">ปิด</button>
+        <button onclick="mergeAndPrintPDF()" class="px-6 py-2.5 bg-secondary hover:bg-secondaryHover text-white rounded-xl font-black shadow-md flex items-center gap-2 transition">
+                    <i data-lucide="printer" size="18"></i> รวมไฟล์ & พิมพ์
+                </button>
+      </div>
+    </div>
+  </div>
+
+  <aside id="sidebar"
+    class="sidebar-expanded bg-white border-r border-slate-200 shadow-sm flex flex-col h-screen hidden md:flex flex-shrink-0">
+    <div class="h-16 flex items-center justify-center border-b border-slate-100 px-4 gap-3 bg-slate-50/50">
+      <div
+        class="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center text-white shadow-md flex-shrink-0">
+        <i data-lucide="landmark" size="18"></i>
+      </div>
+      <div class="logo-text whitespace-nowrap overflow-hidden">
+        <h2 class="font-black text-slate-800 text-lg leading-tight">Finance OS</h2>
+      </div>
+    </div>
+
+    <div class="px-4 py-4 border-b border-slate-100 bg-blue-50/30 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div
+          class="w-10 h-10 bg-secondary text-white rounded-full flex items-center justify-center font-bold flex-shrink-0"
+          id="userInitial">U</div>
+        <div class="logo-text overflow-hidden">
+          <p class="text-xs font-bold text-slate-800 truncate" id="userName">User</p>
+          <p class="text-[10px] text-secondary font-bold" id="userRole">Role</p>
+        </div>
+      </div>
+      <button onclick="switchAccount()" class="text-slate-400 hover:text-primary transition p-2 rounded-lg hover:bg-white logo-text" title="สลับบัญชี"><i data-lucide="log-out" size="16"></i></button>
+    </div>
+
+    <nav class="flex-1 overflow-y-auto py-4 flex flex-col gap-1 px-3 hide-scrollbar">
+      <div onclick="switchNav('dashboard')" id="nav-dashboard"
+        class="nav-item flex items-center gap-3 p-3.5 rounded-xl cursor-pointer text-slate-600 active-nav">
+        <i data-lucide="layout-dashboard" size="20"></i>
+        <span class="nav-text whitespace-nowrap font-medium">แดชบอร์ด</span>
+      </div>
+      <div
+        class="nav-header mt-5 mb-1 px-3 text-[10px] font-bold text-secondary uppercase tracking-widest whitespace-nowrap">
+        ระบบงาน</div>
+      <div onclick="switchNav('forms')" id="nav-forms"
+        class="nav-item flex items-center gap-3 p-3.5 rounded-xl cursor-pointer text-slate-600 __add_perm">
+        <i data-lucide="file-plus-2" size="20"></i>
+        <span class="nav-text whitespace-nowrap font-medium">บันทึกข้อมูลใหม่</span>
+      </div>
+      <div onclick="switchNav('tables')" id="nav-tables"
+        class="nav-item flex items-center gap-3 p-3.5 rounded-xl cursor-pointer text-slate-600 __view_perm">
+        <i data-lucide="database" size="20"></i>
+        <span class="nav-text whitespace-nowrap font-medium">ฐานข้อมูลบัญชี</span>
+      </div>
+      <div
+        class="nav-header mt-5 mb-1 px-3 text-[10px] font-bold text-secondary uppercase tracking-widest whitespace-nowrap admin-only">
+        ระบบจัดการ</div>
+      <div onclick="switchNav('settings')" id="nav-settings"
+        class="nav-item flex items-center gap-3 p-3.5 rounded-xl cursor-pointer text-slate-600 admin-only">
+        <i data-lucide="settings-2" size="20"></i>
+        <span class="nav-text whitespace-nowrap font-medium">ตั้งค่าระบบ</span>
+      </div>
+    </nav>
+  </aside>
+
+  <div class="flex-1 flex flex-col h-screen overflow-hidden relative">
+    <header
+      class="h-16 bg-white border-b border-slate-200 shadow-sm flex items-center justify-between px-4 lg:px-8 z-30 flex-shrink-0">
+      <div class="flex items-center gap-4">
+        <button onclick="toggleSidebar()" class="p-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition hidden md:block"><i data-lucide="menu"></i></button>
+        <div class="md:hidden font-black text-primary flex items-center gap-2"><i data-lucide="landmark"></i> Finance OS
+        </div>
+        <div class="hidden md:block">
+          <h1 id="pageTitle" class="text-xl font-black text-slate-800 leading-tight">แดชบอร์ด</h1>
+          <p id="pageSub" class="text-xs text-slate-500 font-medium">ภาพรวมและสรุปข้อมูลทางการเงิน</p>
+        </div>
+      </div>
+      <div id="topActions" class="hidden flex gap-2">
+        <button onclick="exportToExcelDirect()" class="bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-emerald-600 shadow-md transition flex items-center gap-2">
+                    <i data-lucide="download" size="18"></i> <span class="hidden sm:inline">Export Excel</span>
+                </button>
+      </div>
+    </header>
+
+    <div id="globalLoader" class="flex flex-col items-center justify-center h-full flex-1 bg-slate-50 z-50 relative">
+      <div class="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+      <p class="mt-4 text-primary font-bold tracking-widest animate-pulse" id="loaderText">กำลังโหลดระบบ Enterprise...
+      </p>
+    </div>
+
+    <main id="appContent" class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 hidden relative">
+
+      <div id="page-dashboard" class="hidden max-w-7xl mx-auto space-y-6">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+          <div class="form-card border-t-4 border-t-primary relative overflow-hidden group hover:shadow-md transition">
+            <div class="absolute -right-4 -top-4 opacity-10 text-primary group-hover:scale-110 transition-transform">
+              <i data-lucide="file-text" size="140"></i>
+            </div>
+            <p class="text-xs text-slate-500 font-bold uppercase tracking-widest">ใบคุมบัญชีรวม</p>
+            <h3 id="d-ledger" class="text-5xl font-black mt-2 text-primary">0</h3>
+          </div>
+          <div
+            class="form-card border-t-4 border-t-secondary relative overflow-hidden group hover:shadow-md transition">
+            <div class="absolute -right-4 -top-4 opacity-10 text-secondary group-hover:scale-110 transition-transform">
+              <i data-lucide="wallet" size="140"></i>
+            </div>
+            <p class="text-xs text-slate-500 font-bold uppercase tracking-widest">รายการยืมเงิน</p>
+            <h3 id="d-loans" class="text-5xl font-black mt-2 text-secondary">0</h3>
+          </div>
+          <div class="form-card border-t-4 border-t-accent relative overflow-hidden group hover:shadow-md transition">
+            <div class="absolute -right-4 -top-4 opacity-10 text-accent group-hover:scale-110 transition-transform">
+              <i data-lucide="briefcase" size="140"></i>
+            </div>
+            <p class="text-xs text-slate-500 font-bold uppercase tracking-widest">เงินนอกงบประมาณ</p>
+            <h3 id="d-ext" class="text-5xl font-black mt-2 text-accent">0</h3>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="form-card" id="cont-chartLine">
+            <h4 class="font-bold text-slate-700 mb-4 border-b border-slate-100 pb-2">แนวโน้มการเบิกจ่าย (ใบคุมบัญชี)
+            </h4>
+            <div class="relative h-64 w-full"><canvas id="chartLine"></canvas></div>
+          </div>
+          <div class="form-card" id="cont-chartDoughnut">
+            <h4 class="font-bold text-slate-700 mb-4 border-b border-slate-100 pb-2">ค่าใช้จ่ายแยกตามแหล่งเงิน</h4>
+            <div class="relative h-64 w-full flex items-center justify-center"><canvas id="chartDoughnut"></canvas>
+            </div>
+          </div>
+          <div class="form-card" id="cont-chartPie">
+            <h4 class="font-bold text-slate-700 mb-4 border-b border-slate-100 pb-2">สัดส่วนเอกสารในระบบ</h4>
+            <div class="relative h-64 w-full flex items-center justify-center"><canvas id="chartPie"></canvas></div>
+          </div>
+          <div class="form-card" id="cont-chartBar">
+            <h4 class="font-bold text-slate-700 mb-4 border-b border-slate-100 pb-2">สถานะใบยืมเงิน</h4>
+            <div class="relative h-64 w-full"><canvas id="chartBar"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="page-forms" class="hidden max-w-7xl mx-auto space-y-6">
+        <div
+          class="flex overflow-x-auto hide-scrollbar bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200 gap-1">
+          <button onclick="switchTab('ftab', 'ledger')" id="ftab-ledger" class="tab-btn flex-1 min-w-[140px] px-4 py-3 flex items-center justify-center gap-2 text-sm font-bold rounded-xl"><i data-lucide="file-text" size="18"></i> คุมบัญชี</button>
+          <button onclick="switchTab('ftab', 'loan')" id="ftab-loan" class="tab-btn flex-1 min-w-[140px] px-4 py-3 flex items-center justify-center gap-2 text-sm font-bold rounded-xl"><i data-lucide="wallet" size="18"></i> ใบยืม</button>
+          <button onclick="switchTab('ftab', 'ext')" id="ftab-ext" class="tab-btn flex-1 min-w-[140px] px-4 py-3 flex items-center justify-center gap-2 text-sm font-bold rounded-xl"><i data-lucide="briefcase" size="18"></i> เงินนอก</button>
+          <button onclick="switchTab('ftab', 'income')" id="ftab-income" class="tab-btn flex-1 min-w-[140px] px-4 py-3 flex items-center justify-center gap-2 text-sm font-bold rounded-xl"><i data-lucide="coins" size="18"></i> รายได้อื่น</button>
+        </div>
+
+        <div id="frm-ledger" class="form-pane space-y-6 animate-fade-in hidden">
+          <div class="form-card bg-orange-50/20 border-orange-100">
+            <h4 class="font-black text-lg text-primary mb-5 flex items-center gap-2 border-b border-primary/20 pb-3">
+              <i data-lucide="info" size="20"></i> ข้อมูลหลัก (Master)
+            </h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">เลขที่ บค.</label><input type="text" id="fm-doc" class="w-full p-3 rounded-xl border-primary/30 font-bold focus-within:border-primary">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">ลำดับที่ (แก้ไขได้)</label><input type="text" id="fm-seq" class="w-full p-3 rounded-xl text-center font-black text-primary">
+              </div>
+              <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">วันที่ตรวจรับ</label><input type="date" id="fm-recv" class="w-full p-3 rounded-xl init-today">
+              </div>
+              <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">วันที่จ่าย</label><input type="date" id="fm-pay" class="w-full p-3 rounded-xl">
+              </div>
+
+              <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">ชำระเงิน</label><input list="dl-method" id="fm-method" class="w-full p-3 rounded-xl" placeholder="เลือกหรือพิมพ์...">
+              </div>
+              <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">สำนัก</label><input list="dl-dept" id="fm-dept" class="w-full p-3 rounded-xl" placeholder="เลือกหรือพิมพ์...">
+              </div>
+
+              <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">เลขที่สัญญา</label><input type="text" id="fm-contract" class="w-full p-3 rounded-xl">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">รับใบคืนสัญญา (ถ้ามี)</label><input type="date" id="fm-retDate" class="w-full p-3 rounded-xl">
+              </div>
+
+              <div class="md:col-span-4">
+                <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">โครงการ</label><input type="text" id="fm-project" class="w-full p-3 rounded-xl">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-card bg-blue-50/20 border-blue-100">
+            <div class="flex justify-between items-center mb-5 border-b border-secondary/20 pb-3">
+              <h4 class="font-black text-lg text-secondary flex items-center gap-2">
+                <i data-lucide="list-checks" size="20"></i> รายชื่อผู้รับ, รายการย่อย และ ภาษี
+              </h4>
+              <button onclick="addFormRow('ledger')" class="bg-secondary/10 text-secondary px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-secondary hover:text-white transition flex items-center gap-1.5 shadow-sm"><i data-lucide="plus" size="14"></i> เพิ่มแถวรายการ</button>
+            </div>
+            <div class="overflow-x-auto border border-slate-200 rounded-xl bg-white">
+              <table class="w-full text-sm text-left min-w-[1000px]">
+                <thead class="bg-slate-800 text-white font-bold text-[11px] uppercase tracking-wider">
+                  <tr>
+                    <th class="p-3 w-48 rounded-tl-xl">ชื่อผู้รับเงิน/ผู้เบิก</th>
+                    <th class="p-3">รายการ</th>
+                    <th class="p-3 w-28 text-right">จำนวนเงิน</th>
+                    <th class="p-3 w-36">ประเภทภาษี</th>
+                    <th class="p-3 w-24 text-right">ภาษี 1%</th>
+                    <th class="p-3 w-28 text-right">สุทธิ</th>
+                    <th class="p-3 w-32">แหล่งเงิน</th>
+                    <th class="p-3 w-28">เลข GF</th>
+                    <th class="p-3 w-12 text-center rounded-tr-xl">ลบ</th>
+                  </tr>
+                </thead>
+                <tbody id="rows-ledger" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+          <button onclick="submitData('ledger')" class="w-full bg-primary hover:bg-primaryHover text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-primary/30 transition-all transform hover:-translate-y-1 flex justify-center items-center gap-2"><i data-lucide="save"></i> บันทึกตั้งหนี้ใบคุมบัญชี</button>
+        </div>
+
+        <div id="frm-loan" class="form-pane space-y-6 animate-fade-in hidden">
+          <div class="form-card bg-orange-50/20 border-orange-100">
+            <h4 class="font-black text-lg text-primary mb-5 flex items-center gap-2 border-b border-primary/20 pb-3">
+              <i data-lucide="user" size="20"></i> ข้อมูลผู้ยืม
+            </h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div>
+                <label class="block text-xs font-bold text-secondary mb-1.5 uppercase">เลขที่ บย. (แก้ไขได้)</label><input type="text" id="fl-seq" class="w-full p-3 border-secondary/30 bg-secondary/5 rounded-xl font-black text-center text-secondary">
+              </div>
+              <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">เลขที่ บค.</label><input type="text" id="fl-doc" class="w-full p-3 rounded-xl">
+              </div>
+              <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">PAID (ชำระ)</label><input list="dl-method" id="fl-method" class="w-full p-3 rounded-xl">
+              </div>
+              <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">ชื่อผู้ยืม</label><input type="text" id="fl-borrower" class="w-full p-3 rounded-xl">
+              </div>
+
+              <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">สำนัก</label><input list="dl-dept" id="fl-dept" class="w-full p-3 rounded-xl">
+              </div>
+              <div class="md:col-span-3">
+                <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">รายละเอียดการยืม</label><input type="text" id="fl-desc" class="w-full p-3 rounded-xl">
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="form-card bg-primary/5 border-primary/10">
+              <h4 class="font-black text-lg text-primary mb-5 flex items-center gap-2 border-b border-primary/20 pb-3">
+                <i data-lucide="coins" size="20"></i> ข้อมูลการเงิน
+              </h4>
+              <div class="grid grid-cols-2 gap-5">
+                <div class="col-span-2">
+                  <label class="block text-xs font-bold text-primary mb-1.5 uppercase">จำนวนเงินยืม</label><input type="text" inputmode="decimal" id="fl-amt" class="w-full p-4 bg-white border-primary/30 rounded-xl font-black text-2xl text-primary shadow-sm text-center" onfocus="onMoneyFocus(this)" onblur="onMoneyBlur(this)">
+                </div>
+                <div class="col-span-2">
+                  <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">โครงการ</label><input type="text" id="fl-project" class="w-full p-3 bg-white rounded-xl">
+                </div>
+                <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">แหล่งเงิน</label><input list="dl-fund" id="fl-fund" class="w-full p-3 bg-white rounded-xl">
+                </div>
+                <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">หมวดหมู่</label><input type="text" id="fl-category" class="w-full p-3 bg-white rounded-xl">
+                </div>
+              </div>
+            </div>
+            <div class="form-card bg-slate-50/50 border-slate-200">
+              <h4
+                class="font-black text-lg text-secondary mb-5 flex items-center gap-2 border-b border-secondary/20 pb-3">
+                <i data-lucide="calendar" size="20"></i> กำหนดเวลา
+              </h4>
+              <div class="space-y-4">
+                <div class="flex gap-4 items-center bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
+                  <span class="w-20 text-xs font-bold text-slate-500 text-right">วันที่ยืม</span>
+                  <input type="date" id="fl-d1" class="flex-1 p-2 rounded-lg bg-slate-50 init-today" onchange="calcDue(this.value, 'fl-d2')">
+                  <input type="text" id="fl-g1" class="w-28 p-2 rounded-lg bg-slate-50" placeholder="GF ยืม">
+                </div>
+                <div class="flex gap-4 items-center bg-red-50 p-2 rounded-xl border border-red-200 shadow-sm">
+                  <span class="w-20 text-xs font-bold text-red-500 text-right">กำหนดคืน</span>
+                  <input type="date" id="fl-d2" class="flex-1 p-2 rounded-lg bg-white text-red-700 font-bold shadow-sm">
+                  <input type="text" id="fl-g2" class="w-28 p-2 rounded-lg bg-white text-red-700 shadow-sm" placeholder="GF กำหนด">
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="text-center text-xs text-slate-400 font-medium"><i data-lucide="info" class="inline w-3 h-3"></i>
+            การคืนเงิน ชดใช้ ล้างหนี้ ทำได้ในหน้าตารางฐานข้อมูล (กดแก้ไข)</p>
+          <button onclick="submitData('loan')" class="w-full bg-secondary hover:bg-secondaryHover text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-secondary/30 transition-all transform hover:-translate-y-1 flex justify-center items-center gap-2"><i data-lucide="save"></i> บันทึกตั้งหนี้ใบยืมเงิน</button>
+        </div>
+
+        <div id="frm-ext" class="form-pane space-y-6 animate-fade-in hidden">
+          <div class="form-card bg-orange-50/20 border-orange-100">
+            <h4 class="font-black text-lg text-primary mb-5 flex items-center gap-2 border-b border-primary/20 pb-3">
+              <i data-lucide="briefcase" size="20"></i> ข้อมูลเงินนอก
+            </h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">ลำดับที่ (แก้ไขได้)</label><input type="text" id="fe-seq" class="w-full p-3 rounded-xl font-black text-center text-primary border-primary/30">
+              </div>
+              <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">เลขที่ บค.</label><input type="text" id="fe-doc" class="w-full p-3 rounded-xl">
+              </div>
+              <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">วันที่จ่าย</label><input type="date" id="fe-pay" class="w-full p-3 rounded-xl init-today">
+              </div>
+              <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">ชำระ</label><input list="dl-method" id="fe-method" class="w-full p-3 rounded-xl">
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">ชื่อผู้ติดต่อ</label><input type="text" id="fe-payee" class="w-full p-3 rounded-xl">
+              </div>
+
+              <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">เลขสัญญา</label><input type="text" id="fe-contract" class="w-full p-3 rounded-xl">
+              </div>
+              <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">วันที่รับใบสำคัญ</label><input type="date" id="fe-receipt" class="w-full p-3 rounded-xl">
+              </div>
+            </div>
+          </div>
+          <div class="form-card bg-emerald-50/30 border-emerald-100">
+            <div class="flex justify-between items-center mb-5 border-b border-emerald-200/50 pb-3">
+              <h4 class="font-black text-lg text-emerald-600 flex items-center gap-2">
+                <i data-lucide="list" size="20"></i> รายการย่อย
+              </h4>
+              <button onclick="addFormRow('ext')" class="bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-emerald-600 transition flex items-center gap-1.5 shadow-sm"><i data-lucide="plus" size="14"></i> เพิ่มแถว</button>
+            </div>
+            <div class="overflow-x-auto border border-slate-200 rounded-xl bg-white">
+              <table class="w-full text-sm text-left min-w-[600px]">
+                <thead class="bg-slate-800 text-white font-bold text-[11px] uppercase">
+                  <tr>
+                    <th class="p-3 rounded-tl-xl">รายการ</th>
+                    <th class="p-3 w-40 text-right">จำนวนเงิน</th>
+                    <th class="p-3 w-40">เลข GF</th>
+                    <th class="p-3 w-12 text-center rounded-tr-xl">ลบ</th>
+                  </tr>
+                </thead>
+                <tbody id="rows-ext" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+          <button onclick="submitData('ext')" class="w-full bg-slate-800 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-slate-200 hover:bg-slate-700 transition-all transform hover:-translate-y-1 flex justify-center items-center gap-2"><i data-lucide="save"></i> บันทึกเงินนอก</button>
+        </div>
+
+        <div id="frm-income" class="form-pane space-y-6 animate-fade-in hidden">
+          <div class="form-card bg-emerald-50/20 border-emerald-100">
+            <h4
+              class="font-black text-lg text-emerald-600 mb-5 flex items-center gap-2 border-b border-emerald-100 pb-3">
+              <i data-lucide="coins" size="20"></i> ข้อมูลรายได้
+            </h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">ลำดับที่ (แก้ไขได้)</label><input type="text" id="fi-seq" class="w-full p-3 rounded-xl font-black text-center text-emerald-600 border-emerald-200">
+              </div>
+              <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">วันที่รับ</label><input type="date" id="fi-date" class="w-full p-3 rounded-xl init-today">
+              </div>
+              <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">ประเภท</label><input list="dl-income" id="fi-type" class="w-full p-3 rounded-xl" value="รับ">
+              </div>
+              <div class="md:col-span-3">
+                <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">ชื่อผู้ชำระเงิน</label><input type="text" id="fi-name" class="w-full p-3 rounded-xl">
+              </div>
+            </div>
+          </div>
+          <div class="form-card bg-slate-50 border-slate-200">
+            <div class="flex justify-between items-center mb-5 border-b border-slate-200 pb-3">
+              <h4 class="font-black text-lg text-secondary flex items-center gap-2"><i data-lucide="list" size="20"></i>
+                จำนวนเงิน และ GF</h4>
+              <button onclick="addFormRow('income')" class="bg-secondary text-white px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-secondaryHover transition flex items-center gap-1.5 shadow-sm"><i data-lucide="plus" size="14"></i> เพิ่มแถว</button>
+            </div>
+            <div class="overflow-x-auto border border-slate-200 rounded-xl bg-white">
+              <table class="w-full text-sm text-left min-w-[600px]">
+                <thead class="bg-slate-800 text-white font-bold text-[11px] uppercase">
+                  <tr>
+                    <th class="p-3 w-10 rounded-tl-xl"></th>
+                    <th class="p-3">รายการรายได้</th>
+                    <th class="p-3 w-40 text-right">จำนวนเงิน</th>
+                    <th class="p-3 w-48">เลข GF</th>
+                    <th class="p-3 w-12 text-center rounded-tr-xl">ลบ</th>
+                  </tr>
+                </thead>
+                <tbody id="rows-income" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+          <button onclick="submitData('income')" class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-emerald-200 hover:bg-emerald-600 transition-all transform hover:-translate-y-1 flex justify-center items-center gap-2"><i data-lucide="save"></i> บันทึกรายได้</button>
+        </div>
+      </div>
+
+      <div id="page-tables" class="hidden space-y-4 max-w-[1400px] mx-auto animate-fade-in">
+        <div
+          class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 items-center">
+          <div class="flex items-center gap-3 w-full md:w-auto text-sm">
+            <i data-lucide="filter" class="text-slate-400"></i>
+            <input type="date" id="filter-start" class="p-2 border border-slate-200 rounded-lg bg-slate-50 w-full md:w-auto focus:border-secondary" title="ตั้งแต่วันที่">
+            <span class="text-slate-400">-</span>
+            <input type="date" id="filter-end" class="p-2 border border-slate-200 rounded-lg bg-slate-50 w-full md:w-auto focus:border-secondary" title="ถึงวันที่">
+          </div>
+          <div class="relative w-full md:flex-1 flex gap-2">
+            <select id="filter-sort" class="p-2 border border-slate-200 rounded-lg bg-slate-50 text-sm focus:border-secondary outline-none">
+                            <option value="desc">ล่าสุด - เก่าสุด</option>
+                            <option value="asc">เก่าสุด - ล่าสุด</option>
+                        </select>
+            <div class="relative flex-1">
+              <i data-lucide="search" class="absolute left-3 top-2.5 text-slate-400" size="18"></i>
+              <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="พิมพ์ค้นหาข้อมูล (ชื่อ, จำนวนเงิน, GF)..." class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:border-secondary font-medium text-sm bg-slate-50 focus:bg-white transition">
+            </div>
+          </div>
+          <button onclick="filterTable()" class="w-full md:w-auto bg-slate-800 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-slate-700 transition">ค้นหา</button>
+        </div>
+
+        <div
+          class="flex gap-1 overflow-x-auto hide-scrollbar bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200">
+          <button onclick="switchTable('ledger')" id="ttab-ledger" class="tab-btn flex-1 min-w-[120px] px-4 py-2.5 text-slate-600 flex items-center justify-center gap-2 text-sm font-bold rounded-xl whitespace-nowrap"><i data-lucide="file-text" size="16"></i> ใบคุมบัญชี</button>
+          <button onclick="switchTable('loans')" id="ttab-loans" class="tab-btn flex-1 min-w-[120px] px-4 py-2.5 text-slate-600 flex items-center justify-center gap-2 text-sm font-bold rounded-xl whitespace-nowrap"><i data-lucide="wallet" size="16"></i> ใบยืม</button>
+          <button onclick="switchTable('ext')" id="ttab-ext" class="tab-btn flex-1 min-w-[120px] px-4 py-2.5 text-slate-600 flex items-center justify-center gap-2 text-sm font-bold rounded-xl whitespace-nowrap"><i data-lucide="briefcase" size="16"></i> เงินนอก</button>
+          <button onclick="switchTable('income')" id="ttab-income" class="tab-btn flex-1 min-w-[120px] px-4 py-2.5 text-slate-600 flex items-center justify-center gap-2 text-sm font-bold rounded-xl whitespace-nowrap"><i data-lucide="coins" size="16"></i> รายได้อื่น</button>
+          <div class="w-px bg-slate-200 mx-1"></div>
+          <button onclick="switchTable('trash')" id="ttab-trash" class="tab-btn flex-1 min-w-[120px] px-4 py-2.5 text-rose-500 flex items-center justify-center gap-2 text-sm font-bold rounded-xl whitespace-nowrap hover:bg-rose-50 __del_perm"><i data-lucide="trash-2" size="16"></i> ถังขยะ</button>
+        </div>
+
+        <div
+          class="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full min-h-[500px]">
+          <div class="p-3 border-b border-slate-100 flex justify-end bg-slate-50">
+            <div class="text-[10px] font-bold text-slate-500 flex items-center gap-4 flex-wrap">
+              <span class="flex items-center gap-1"><i data-lucide="mouse-pointer-click" size="14" class="text-primary"></i> กดหัวตารางเพื่อเรียง</span>
+              <span class="flex items-center gap-1"><i data-lucide="paperclip" size="14" class="text-secondary"></i> แนบไฟล์</span>
+              <span class="flex items-center gap-1"><i data-lucide="eye" size="14" class="text-secondary"></i> ดูย่อย</span>
+              <span id="editHint" class="flex items-center gap-1 __edit_perm"><i data-lucide="edit-3" size="14" class="text-primary"></i> แก้ไข</span>
+            </div>
+          </div>
+
+          <div class="table-container p-0 relative">
+            <table class="w-full text-left border-collapse min-w-max" id="mainTable">
+              <thead id="tblHead" class="text-[12px] uppercase bg-slate-800 text-white sticky top-0 z-10 shadow-sm">
+              </thead>
+              <tbody id="tblBody" class="text-sm text-slate-700 divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="page-settings" class="hidden max-w-6xl mx-auto space-y-6 admin-only">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <div class="w-full lg:w-64 bg-white rounded-[2rem] p-4 shadow-sm border border-slate-200 self-start">
+            <h3 class="font-black text-slate-800 text-lg mb-4 px-3 pt-2">การตั้งค่า</h3>
+            <div class="flex flex-row lg:flex-col gap-2 overflow-x-auto hide-scrollbar">
+              <button onclick="switchTab('stab', 'users')" id="stab-users" class="tab-btn flex-shrink-0 text-left px-5 py-3.5 rounded-xl font-bold text-sm transition"><i data-lucide="users" class="inline w-4 h-4 mr-2"></i> พนักงาน & สิทธิ์</button>
+              <div class="border-b border-slate-100 my-2"></div>
+              <button onclick="switchTab('stab', 'dash')" id="stab-dash" class="tab-btn flex-shrink-0 text-left px-5 py-3.5 rounded-xl font-bold text-sm transition"><i data-lucide="layout-dashboard" class="inline w-4 h-4 mr-2"></i> จัดการแดชบอร์ด</button>
+              <button onclick="switchTab('stab', 'db')" id="stab-db" class="tab-btn flex-shrink-0 text-left px-5 py-3.5 rounded-xl font-bold text-sm transition"><i data-lucide="calculator" class="inline w-4 h-4 mr-2"></i> ฐานข้อมูล/ภาษี</button>
+              <button onclick="switchTab('stab', 'sys')" id="stab-sys" class="tab-btn flex-shrink-0 text-left px-5 py-3.5 rounded-xl font-bold text-sm transition"><i data-lucide="bell" class="inline w-4 h-4 mr-2"></i> ระบบแจ้งเตือน</button>
+            </div>
+          </div>
+
+          <div class="flex-grow bg-white rounded-[2rem] shadow-sm border border-slate-200 p-6 md:p-8">
+
+            <div id="s-content-users" class="set-pane space-y-6 animate-fade-in hidden">
+              <div class="border-b border-slate-100 pb-4">
+                <h4 class="font-black text-xl text-primary flex items-center gap-2"><i data-lucide="users"></i>
+                  จัดการพนักงาน และ สิทธิ์การใช้งาน</h4>
+              </div>
+
+              <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-6 mt-4">
+                <h5 class="font-black text-slate-800 mb-3">1. จัดการระดับสิทธิ์ (Role Matrix)</h5>
+                <div class="overflow-x-auto">
+                  <table
+                    class="w-full text-sm text-left bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <thead
+                      class="text-[11px] uppercase text-slate-500 font-bold bg-slate-100 border-b border-slate-200">
+                      <tr>
+                        <th class="p-3">ชื่อ Role</th>
+                        <th class="p-3 text-center">ดู (View)</th>
+                        <th class="p-3 text-center">เพิ่ม (Add)</th>
+                        <th class="p-3 text-center">แก้ไข (Edit)</th>
+                        <th class="p-3 text-center">ลบ (Del)</th>
+                        <th class="p-3 text-center w-16">ลบทิ้ง</th>
+                      </tr>
+                    </thead>
+                    <tbody id="role-manager-rows" class="divide-y divide-slate-100"></tbody>
+                  </table>
+                </div>
+                <div class="mt-4 flex flex-col sm:flex-row gap-2">
+                  <input type="text" id="new-role-name" class="p-2.5 border border-slate-200 rounded-lg text-sm flex-1 bg-white" placeholder="พิมพ์ชื่อ Role ใหม่ (เช่น หัวหน้างาน, ผู้ตรวจสอบ)">
+                  <button onclick="addNewRole()" class="px-5 py-2.5 bg-slate-800 text-white rounded-lg text-sm font-bold hover:bg-slate-700 transition">เพิ่ม Role ใหม่</button>
+                </div>
+              </div>
+
+              <div class="mt-8 border-t border-slate-100 pt-6">
+                <h5 class="font-black text-slate-800 mb-4">2. จัดการพนักงานในระบบ</h5>
+                <div class="mb-4">
+                  <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">โดเมนองค์กร (เข้าสู่ระบบอัตโนมัติเป็น Admin)</label>
+                  <input type="text" id="cfg-domain" class="w-full p-3 rounded-xl font-bold text-slate-700 bg-slate-50 border border-slate-200" placeholder="@office.go.th">
+                </div>
+                <div class="flex flex-col sm:flex-row gap-2 mb-4">
+                  <input type="email" id="new-u-email" class="flex-1 p-2.5 rounded-lg border border-slate-200 text-sm bg-slate-50" placeholder="อีเมล">
+                  <input type="text" id="new-u-name" class="flex-1 p-2.5 rounded-lg border border-slate-200 text-sm bg-slate-50" placeholder="ชื่อ (ไม่บังคับ)">
+                  <input type="text" list="dl-roles" id="new-u-role" class="w-full sm:w-32 p-2.5 rounded-lg border border-slate-200 font-bold text-sm bg-white" placeholder="สิทธิ์">
+                  <button onclick="addUserRow()" class="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-lg font-bold hover:bg-primaryHover transition">เพิ่มพนักงาน</button>
+                </div>
+                <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                  <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-800 text-white text-[11px] uppercase">
+                      <tr>
+                        <th class="p-3">อีเมล</th>
+                        <th class="p-3">ชื่อ</th>
+                        <th class="p-3 w-40">Role</th>
+                        <th class="p-3 w-28 text-center">สถานะ</th>
+                        <th class="p-3 w-16 text-center">ลบ</th>
+                      </tr>
+                    </thead>
+                    <tbody id="user-rows" class="divide-y divide-slate-100"></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="mt-8 pt-6 border-t border-slate-100">
+                <button onclick="saveUsersData()" class="w-full bg-slate-800 text-white py-4 rounded-xl font-black text-lg hover:bg-slate-700 shadow-lg transition"><i data-lucide="save" class="inline"></i> บันทึกข้อมูลพนักงาน & สิทธิ์</button>
+              </div>
+            </div>
+
+            <div id="s-content-dash" class="set-pane space-y-6 animate-fade-in hidden">
+              <div class="border-b border-slate-100 pb-4">
+                <h4 class="font-black text-xl text-primary flex items-center gap-2">
+                  <i data-lucide="layout-dashboard"></i> จัดการหน้าแดชบอร์ด
+                </h4>
+              </div>
+              <div class="bg-blue-50/30 border border-blue-100 rounded-2xl p-6">
+                <h5 class="font-black text-slate-700 mb-4">เลือกกราฟที่ต้องการแสดงในหน้าแรก</h5>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer"><input type="checkbox" id="cfg-dash-pie" class="w-5 h-5 accent-primary"> <span class="font-bold text-slate-700 text-sm">สัดส่วนเอกสารในระบบ (Pie)</span></label>
+                  <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer"><input type="checkbox" id="cfg-dash-bar" class="w-5 h-5 accent-secondary"> <span class="font-bold text-slate-700 text-sm">สถานะใบยืมเงิน (Bar)</span></label>
+                  <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer"><input type="checkbox" id="cfg-dash-line" class="w-5 h-5 accent-emerald-500"> <span class="font-bold text-slate-700 text-sm">แนวโน้มการเบิกจ่าย (Line)</span></label>
+                  <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer"><input type="checkbox" id="cfg-dash-doughnut" class="w-5 h-5 accent-accent"> <span class="font-bold text-slate-700 text-sm">ค่าใช้จ่ายแยกตามแหล่งเงิน (Doughnut)</span></label>
+                </div>
+              </div>
+              <div class="mt-8 pt-6 border-t border-slate-100">
+                <button onclick="saveConfigData()" class="w-full bg-primary text-white py-4 rounded-xl font-black text-lg hover:bg-primaryHover shadow-lg transition"><i data-lucide="save" class="inline"></i> บันทึกการตั้งค่ากราฟ</button>
+              </div>
+            </div>
+
+            <div id="s-content-db" class="set-pane space-y-6 animate-fade-in hidden">
+              <div class="border-b border-slate-100 pb-4">
+                <h4 class="font-black text-xl text-primary flex items-center gap-2"><i data-lucide="calculator"></i>
+                  ฐานข้อมูล/ภาษี/ฟอร์ม</h4>
+              </div>
+
+              <div class="bg-orange-50/50 border border-orange-100 rounded-2xl p-5 mb-6">
+                <h5 class="font-black text-slate-700 mb-3">แก้ไขตัวเลือกที่อยู่ในฟอร์ม</h5>
+                <p class="text-[10px] text-slate-500 mb-3">ลบคำที่ไม่ต้องการออกได้ที่นี่ (พิมพ์ 1 คำต่อ 1 บรรทัด)</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">สำนัก</label><textarea id="cfg-depts" rows="4" class="w-full p-3 rounded-xl bg-white border border-slate-200 text-sm"></textarea>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">แหล่งเงิน</label><textarea id="cfg-funds" rows="4" class="w-full p-3 rounded-xl bg-white border border-slate-200 text-sm"></textarea>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">ประเภทชำระเงิน</label><textarea id="cfg-methods" rows="3" class="w-full p-3 rounded-xl bg-white border border-slate-200 text-sm"></textarea>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">ประเภทภาษี</label><textarea id="cfg-taxes" rows="3" class="w-full p-3 rounded-xl bg-white border border-slate-200 text-sm"></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-4">
+                <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">VAT (%)</label><input type="number" id="cfg-vat" class="w-full p-3 rounded-xl font-black text-lg text-primary text-center bg-slate-50 border border-slate-200">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">หัก ณ ที่จ่าย (%)</label><input type="number" id="cfg-wht" class="w-full p-3 rounded-xl font-black text-lg text-primary text-center bg-slate-50 border border-slate-200">
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">ชีตใบคุมบัญชี</label><input type="text" id="cfg-ledger" class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200">
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">ชีตทะเบียนใบยืม</label><input type="text" id="cfg-loan" class="w-full p-3 rounded-xl bg-slate-50 border border-slate-200">
+                </div>
+              </div>
+
+              <div class="mt-10 pt-6 border-t border-slate-100">
+                <button onclick="saveConfigData()" class="w-full bg-primary text-white py-4 rounded-xl font-black text-lg hover:bg-primaryHover shadow-lg transition"><i data-lucide="save" class="inline"></i> บันทึกการตั้งค่าฐานข้อมูล</button>
+              </div>
+            </div>
+
+            <div id="s-content-sys" class="set-pane space-y-6 animate-fade-in hidden">
+              <div class="border-b border-slate-100 pb-4">
+                <h4 class="font-black text-xl text-primary flex items-center gap-2"><i data-lucide="bell"></i>
+                  แจ้งเตือนอีเมล</h4>
+              </div>
+              <div class="bg-orange-50/50 border border-orange-100 rounded-2xl p-5 mb-6">
+                <h5 class="font-black text-slate-700 mb-2">1. ตั้งเวลาส่งแจ้งเตือนรายวัน</h5>
+                <input type="time" id="cfg-notif-time" class="p-3 border border-slate-200 rounded-xl font-bold text-primary bg-white outline-none w-48">
+                <p class="text-[10px] text-slate-400 mt-2">ระบบจะสรุปรายการที่ต้องติดตามส่งให้ทุกวันตามเวลา</p>
+              </div>
+              <div class="bg-blue-50/50 border border-blue-100 rounded-2xl p-5 mb-6">
+                <h5 class="font-black text-slate-700 mb-2">2. อีเมลผู้รับรายงาน</h5>
+                <textarea id="cfg-notif-emails" rows="2" class="w-full p-3 border border-slate-200 rounded-xl bg-white focus:border-secondary outline-none text-sm" placeholder="email1@domain.com, email2@domain.com"></textarea>
+              </div>
+              <div class="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-5 mb-6">
+                <h5 class="font-black text-slate-700 mb-3">3. ข้อมูลที่ต้องการแจ้งเตือน</h5>
+                <div class="flex gap-6">
+                  <label class="flex items-center gap-2 font-bold text-sm text-slate-600"><input type="checkbox" checked disabled class="w-5 h-5 accent-secondary"> ใบยืมเงิน (ค้างชำระ)</label>
+                  <label class="flex items-center gap-2 font-bold text-sm text-slate-600"><input type="checkbox" id="cfg-notif-docs" class="w-5 h-5 accent-emerald-500"> เอกสารยังไม่ครบ</label>
+                </div>
+              </div>
+              <div class="mt-10 pt-6 border-t border-slate-100">
+                <button onclick="saveConfigData()" class="w-full bg-primary text-white py-4 rounded-xl font-black text-lg hover:bg-primaryHover shadow-lg transition"><i data-lucide="save" class="inline"></i> บันทึกการตั้งค่า</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <div id="loadingOverlay"
+      class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+      <div class="flex flex-col items-center bg-white p-8 rounded-[2rem] shadow-2xl border border-slate-100">
+        <div class="w-16 h-16 border-4 border-orange-100 border-t-primary rounded-full animate-spin"></div>
+        <p class="mt-5 font-black text-slate-700 tracking-widest text-lg">กำลังประมวลผล...</p>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function updateTotalAmountToTopRow() {
+          // ค้นหาพื้นที่ Container หลักที่บรรจุฟอร์มแก้ไขหรือเพิ่มข้อมูลแบบรายการกลุ่ม (Grouped Layout)
+          const container = document.getElementById('groupedRowsContainer') || document.querySelector('.modal-body form') || document.getElementById('dynamicFormContainer');
+          if (!container) return;
+
+          // ค้นหากล่องกรอกข้อมูลจำนวนเงิน (_amt) ทั้งหมดในกลุ่มนั้นมาเรียงเป็น Array
+          const amtInputs = Array.from(container.querySelectorAll('._amt'));
+          if (amtInputs.length <= 1) return; // หากมีรายการเดียว ไม่จำเป็นต้องคำนวณรวมยอด
+
+          let totalAmt = 0;
+
+          // วิ่งลูปบวกสะสมจำนวนเงินจากแถวย่อย ๆ ทั้งหมด (เริ่มนับจากแถวที่สอง index 1 เป็นต้นไป)
+          amtInputs.forEach((input, index) => {
+            if (index > 0) {
+              // ดึงค่าแปลงเงินออกเป็นตัวเลขเพียว ๆ (ตัดคอมมาออกก่อน)
+              let val = parseFloat(input.value.replace(/,/g, '')) || 0;
+              totalAmt += val;
+            }
+          });
+
+          // นำผลรวมของแถวย่อยทั้งหมด ไปวางทับที่ช่องจำนวนเงินของแถวแรกสุด (Index 0)
+          const firstAmtInput = amtInputs[0];
+          if (firstAmtInput) {
+            firstAmtInput.value = formatNum(totalAmt.toFixed(2));
+            
+            // บังคับให้ช่องแรกสุดสั่งคำนวณภาษี (VAT/WHT หัก 1%) และยอดรวมสุทธิของตัวมันเองใหม่ทันทีตามผลรวม
+            const firstRow = firstAmtInput.closest('tr') || firstAmtInput.closest('.grid') || firstAmtInput.closest('#groupedRowsContainer > div');
+            if (firstRow) {
+              const taxEl = firstRow.querySelector('._tax');
+              const whtEl = firstRow.querySelector('._wht');
+              const netEl = firstRow.querySelector('._net');
+              
+              if (taxEl && whtEl && netEl) {
+                const amt = totalAmt;
+                const t = String(taxEl.value).toLowerCase();
+                const d = window.appData.configs || {}; 
+                const vatRate = parseFloat(d.vat_rate) || 7; 
+                const whtRate = parseFloat(d.wht_rate) || 1;
+                
+                let tx = 0, net = amt;
+                if (t.includes('จด vat') || t.includes('จดvat')) { 
+                    tx = (amt * (100 / (100 + vatRate))) * (whtRate / 100); 
+                } else if (t.includes('หัก 1%') || t.includes('1%')) { 
+                    tx = amt * (whtRate / 100); 
+                }
+                net = amt - tx; 
+                
+                whtEl.value = formatNum(tx.toFixed(2)); 
+                netEl.value = formatNum(net.toFixed(2));
+              }
+            }
+          }
+        }
+        // --- GLOBAL & PARSERS ---
+        const handleGASResponse = (rawRes, onSuccess) => {
+            try {
+                let res = rawRes;
+                if (typeof rawRes === 'string') { try { res = JSON.parse(rawRes); } catch(e) { res = {}; } }
+                if (!res || typeof res !== 'object') { showActionLoader(false); showLoader(false); Swal.fire('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'ไม่สามารถอ่านข้อมูลจากฐานข้อมูลได้', 'error'); return; }
+                if (res.error) {
+                    showActionLoader(false); showLoader(false);
+                    if(res.auth && res.auth.role === 'Guest') document.getElementById('authOverlay').classList.remove('hidden');
+                    else Swal.fire({title: 'ไม่มีสิทธิ์เข้าถึง', text: res.error, icon: 'error', confirmButtonColor:'#ED7D31'}).then(() => {
+                        if(res.auth && res.auth.role === 'Guest') document.getElementById('authOverlay').classList.remove('hidden');
+                    });
+                    return;
+                }
+                onSuccess(res);
+            } catch (err) { showActionLoader(false); showLoader(false); Swal.fire('ข้อผิดพลาดระบบ', 'การประมวลผลข้อมูลล้มเหลว: ' + err.message, 'error'); }
+        };
+
+        const thFormat = (date, formatStr, locale) => `${date.getDate()} ${locale.months.shorthand[date.getMonth()]} ${date.getFullYear() + 543}`;
+
+        function parseThaiDate(dateStr) {
+            if (!dateStr) return 0;
+            let str = dateStr.toString().trim();
+            if (str.match(/^\d{4}-\d{2}-\d{2}/)) { let d = new Date(str.substring(0, 10)).getTime(); if(!isNaN(d)) return d; }
+            const months = { 'ม.ค.': 0, 'ก.พ.': 1, 'มี.ค.': 2, 'เม.ย.': 3, 'พ.ค.': 4, 'มิ.ย.': 5, 'ก.ค.': 6, 'ส.ค.': 7, 'ก.ย.': 8, 'ต.ค.': 9, 'พ.ย.': 10, 'ธ.ค.': 11 };
+            const parts = str.split(' ');
+            if (parts.length === 3) {
+                let y = parseInt(parts[2]); if (y > 2500) y -= 543;
+                const m = months[parts[1]]; const d = parseInt(parts[0]);
+                if (!isNaN(d) && m !== undefined && !isNaN(y)) return new Date(y, m, d).getTime();
+            }
+            const fallback = new Date(str).getTime(); return isNaN(fallback) ? 0 : fallback;
+        }
+
+        const v = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
+        
+        window.appData = { auth: {}, configs: {}, tables: {}, stats: {} };
+        window.localUsers = []; window.rolePermsMap = { "User": {view: true, add: true, edit: false, del: false} }; 
+        
+        let activeTable = 'ledger'; let sortCol = -1; let sortAsc = true;
+        let currentRecordKey = ""; let currentAttachments = [];
+        let myPieChart, myBarChart, myLineChart, myDoughnutChart;
+        
+        const safeArray = (data, def = "") => Array.isArray(data) ? data : String(data || def).split(',').map(x => x.trim()).filter(x => x);
+        
+
+        function cleanDateForInput(vStr) {
+    if (!vStr || vStr === 'undefined' || vStr === 'null') return '';
+    
+    // ตัดช่องว่างซ้าย-ขวา
+    let str = String(vStr).trim();
+    if (!str) return '';
+
+    // ถ้าค่าที่ส่งมาเป็นรูปแบบ ISO (YYYY-MM-DD) อยู่แล้ว เช่น "2026-05-22" ให้ส่งกลับได้เลย
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+
+    // 🌟 รองรับการแปลงวันที่ไทยย่อ เช่น "12 พ.ค. 2569" หรือ "1 เม.ย. 2569"
+    const thMonthsShort = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    
+    // แยกส่วนประกอบด้วยช่องว่าง
+    let parts = str.split(/\s+/);
+    if (parts.length >= 3) {
+        let day = parts[0].padStart(2, '0'); // เติมเลข 0 ข้างหน้าถ้ามีหลักเดียว เช่น "1" -> "01"
+        let monthStr = parts[1];
+        let yearBC = parseInt(parts[2]) || 0; // ปี พ.ศ.
+
+        // หาเลขเดือน (01-12) จากชื่อเดือนย่อ
+        let monthIdx = thMonthsShort.indexOf(monthStr);
+        if (monthIdx !== -1 && yearBC > 2500) {
+            let month = String(monthIdx + 1).padStart(2, '0');
+            let yearAD = yearBC - 543; // แปลง พ.ศ. เป็น ค.ศ. (เช่น 2569 -> 2026)
+            
+            return `${yearAD}-${month}-${day}`; // ส่งกลับในรูปแบบ "YYYY-MM-DD"
+        }
+    }
+
+    // กรณีเผื่อเจอระบบเก็บเป็น Timestamp หรือ Date Object แปลงเป็น String
+    try {
+        let d = new Date(str);
+        if (!isNaN(d.getTime())) {
+            return d.toISOString().split('T')[0];
+        }
+    } catch(e) {}
+
+    return '';
+}
+        const formatNum = (v) => isNaN(parseFloat(v)) || v === "" ? (v||'-') : parseFloat(v).toLocaleString('th-TH', {minimumFractionDigits:2, maximumFractionDigits:2});
+        
+        // --- Comma Helper ---
+        function onMoneyFocus(el) { el.value = String(el.value).replace(/,/g, ''); }
+        function onMoneyBlur(el) { 
+            let val = parseFloat(String(el.value).replace(/,/g, ''));
+            if(!isNaN(val)) el.value = val.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits:2});
+        }
+        const parseMoney = (val) => parseFloat(String(val).replace(/,/g, '')) || 0;
+
+        function formatThaiDateString(isoString) {
+            if(!isoString || typeof isoString !== 'string' || !isoString.includes('-')) return isoString;
+            const parts = isoString.split('-'); if(parts.length < 3) return isoString;
+            const date = new Date(parts[0], parts[1]-1, parts[2].substring(0,2)); if(isNaN(date.getTime())) return isoString;
+            const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+            return `${date.getDate()} ${thaiMonths[date.getMonth()]} ${date.getFullYear() + 543}`;
+        }
+
+        lucide.createIcons();
+
+        // --- NAVIGATION & TABS ---
+        function switchAccount() {
+            window.open('https://accounts.google.com/AccountChooser', '_blank');
+            Swal.fire({
+                title: 'สลับบัญชี Google',
+                text: 'เปิดหน้าต่างใหม่ให้เรียบร้อยแล้ว กรุณาเลือกบัญชีที่ต้องการสลับ จากนั้นกดปุ่มรีเฟรช (Refresh) หน้านี้ใหม่อีกครั้งครับ',
+                icon: 'info', confirmButtonColor: '#ED7D31'
+            });
+        }
+
+        function switchTab(group, id) {
+            let btnClassAct, btnClassInact, panePrefix;
+            if(group === 'nav') { btnClassAct = ['active-nav']; btnClassInact = ['text-slate-600']; panePrefix = 'page'; }
+            else if(group === 'ftab') { btnClassAct = ['bg-primary', 'text-white', 'shadow-md']; btnClassInact = ['bg-slate-50', 'text-slate-500', 'hover:bg-slate-100']; panePrefix = 'frm'; }
+            else if(group === 'ttab') { btnClassAct = ['bg-primary', 'text-white', 'shadow-md']; btnClassInact = ['bg-slate-50', 'text-slate-600']; panePrefix = 'table-none'; } 
+            else if(group === 'stab') { btnClassAct = ['bg-primary/10', 'text-primary']; btnClassInact = ['text-slate-500']; panePrefix = 's-content'; }
+
+            document.querySelectorAll(`.${group}-btn, [id^="${group}-"]`).forEach(el => {
+                if(el.tagName === 'BUTTON' || el.classList.contains('nav-item')) {
+                    el.classList.remove(...btnClassAct); el.classList.add(...btnClassInact);
+                    if(group==='ttab' && el.id==='ttab-trash') el.classList.remove('bg-rose-500'); 
+                }
+            });
+
+            const activeBtn = document.getElementById(`${group}-${id}`);
+            if(activeBtn) {
+                activeBtn.classList.remove(...btnClassInact);
+                if(group==='ttab' && id==='trash') { activeBtn.classList.add('bg-rose-500', 'text-white', 'shadow-md'); }
+                else activeBtn.classList.add(...btnClassAct);
+            }
+
+            if(panePrefix !== 'table-none') {
+                document.querySelectorAll(group === 'nav' ? '[id^="page-"]' : `.${panePrefix}, [id^="${panePrefix}-"]`).forEach(el => { if(el.id && el.id.startsWith(panePrefix+'-')) el.classList.add('hidden'); });
+                const activePane = document.getElementById(`${panePrefix}-${id}`);
+                if(activePane) { activePane.classList.remove('hidden'); activePane.classList.add('animate-fade-in'); }
+            }
+
+            if(group === 'nav') {
+                const titleMap = { 'dashboard':['แดชบอร์ด','ภาพรวมและสรุปข้อมูลทางการเงิน'], 'forms':['บันทึกข้อมูล','บันทึกรายการตั้งหนี้และรายรับ'], 'tables':['ฐานข้อมูลบัญชี','ตรวจสอบ แก้ไข ลบ และ Export ข้อมูล'], 'settings':['ตั้งค่าระบบ','จัดการฐานข้อมูลและสิทธิ์'], 'docs':['คู่มือ','เอกสารการใช้งานระบบ']};
+                if(titleMap[id]) { document.getElementById('pageTitle').innerText = titleMap[id][0]; document.getElementById('pageSub').innerText = titleMap[id][1]; }
+                document.getElementById('topActions').classList.toggle('hidden', id !== 'tables');
+                if(id === 'dashboard') updateStats();
+                if(id === 'forms') switchTab('ftab', 'ledger');
+                if(id === 'tables') switchTable(activeTable === 'trash' ? 'ledger' : activeTable);
+                if(id === 'settings') { populateSettings(); switchTab('stab', 'users'); }
+            }
+            if(group === 'ftab') {
+                google.script.run.withSuccessHandler(rawSeq => {
+                    let seq = typeof rawSeq === 'string' ? JSON.parse(rawSeq) : rawSeq;
+                    ['ledger','loan','ext','income'].forEach(k => { const el = document.getElementById(k==='ledger'?'fm-seq':`f${k[0]}-seq`); if(el) el.value = seq[k]; });
+                }).getNextSequences();
+                ['ledger','ext','income'].forEach(t => { const tb = document.getElementById('rows-'+t); if(tb && tb.children.length===0) addFormRow(t); });
+            }
+        }
+
+        function switchNav(id) { switchTab('nav', id); }
+        function switchForm(id) { switchTab('ftab', id); }
+        function switchTable(id) { 
+            activeTable = id; 
+            switchTab('ttab', id); 
+            const editHint = document.getElementById('editHint'); 
+            if(editHint) editHint.classList.toggle('hidden', id === 'trash'); 
+            renderTableData(); 
+        }
+        function switchSetTab(id) { switchTab('stab', id); }
+
+        // --- INIT APP ---
+        window.onload = () => {
+            showLoader(true);
+            google.script.run.withSuccessHandler(rawRes => {
+                handleGASResponse(rawRes, (res) => {
+                    window.appData = Object.assign({ auth: {}, configs: {}, tables: {}, stats: {} }, res);
+                    setupAuthUI(); initApp(); showLoader(false); switchNav('dashboard');
+                });
+            }).withFailureHandler(err => { showLoader(false); Swal.fire('Error', err.message, 'error'); }).getInitialAppLoad();
+        };
+
+        function manualLogin() {
+            const email = document.getElementById('authEmail').value.trim();
+            if(!email) return Swal.fire({title:'แจ้งเตือน', text:'กรุณากรอกอีเมล', icon:'warning', confirmButtonColor:'#ED7D31'});
+            showLoader(true); document.getElementById('authOverlay').classList.add('hidden');
+            google.script.run.withSuccessHandler(rawRes => {
+                handleGASResponse(rawRes, (res) => {
+                    window.appData = Object.assign({ auth: {}, configs: {}, tables: {}, stats: {} }, res);
+                    setupAuthUI(); initApp(); showLoader(false); switchNav('dashboard');
+                });
+            }).withFailureHandler(err => {
+                showLoader(false); Swal.fire('Error', err.message, 'error').then(() => document.getElementById('authOverlay').classList.remove('hidden'));
+            }).manualAuthCheck(email);
+        }
+
+        function setupAuthUI() {
+            const auth = window.appData.auth || {};
+            document.getElementById('userName').innerText = auth.name || 'Guest'; document.getElementById('userRole').innerText = auth.role || 'Guest'; document.getElementById('userInitial').innerText = (auth.name || 'G').charAt(0).toUpperCase();
+            const perms = auth.permissions || { view: false, add: false, edit: false, del: false };
+            if(auth.role !== 'Admin') document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+            if(!perms.add) document.querySelectorAll('.__add_perm').forEach(el => el.classList.add('hidden'));
+            if(!perms.view) document.querySelectorAll('.__view_perm').forEach(el => el.classList.add('hidden'));
+        }
+
+        function applyTablePerms() {
+            const p = (window.appData.auth || {}).permissions || { edit: false, del: false };
+            if(!p.edit) document.querySelectorAll('.__edit_perm').forEach(el => el.classList.add('hidden'));
+            if(!p.del) document.querySelectorAll('.__del_perm').forEach(el => el.classList.add('hidden'));
+        }
+
+        function bindDataList(dropdowns) {
+            if (!dropdowns || dropdowns.length <= 1) return;
+            const headers = dropdowns[0];
+            const listMapping = { 'สำนัก': 'dl-dept', 'แหล่งเงิน': 'dl-fund', 'ประเภทชำระเงิน': 'dl-method', 'ประเภทภาษี': 'dl-income' };
+            headers.forEach((header, colIdx) => {
+                const listId = listMapping[header];
+                if (listId) {
+                    const dl = document.getElementById(listId);
+                    if (dl) {
+                        dl.innerHTML = '';
+                        for (let i = 1; i < dropdowns.length; i++) {
+                            const val = dropdowns[i][colIdx];
+                            if (val && String(val).trim() !== '') dl.innerHTML += `<option value="${val}">`;
+                        }
+                    }
+                }
+            });
+        }
+
+        function safeInitFlatpickr(selector, config = {}) {
+            document.querySelectorAll(selector).forEach(el => {
+                let initVal = el.value || '';
+                if (initVal && (initVal === '888' || isNaN(Date.parse(initVal)) && !initVal.match(/^\d{4}-\d{2}-\d{2}/) && !initVal.includes(' '))) {
+                    el.value = ''; 
+                }
+                flatpickr(el, Object.assign({ locale: "th", altInput: true, altFormat: "j M Y", dateFormat: "Y-m-d", formatDate: thFormat }, config));
+            });
+        }
+
+        function initApp() {
+            safeInitFlatpickr(".init-today", { defaultDate: "today" });
+            safeInitFlatpickr("input[type='date']:not(.init-today)");
+            
+            const d = window.appData.configs || {};
+            bindDataList([ 
+                ['สำนัก', 'แหล่งเงิน', 'ประเภทชำระเงิน', 'ประเภทภาษี'],
+                ...Math.max((d.departments||[]).length, (d.fund_types||[]).length, (d.pay_methods||[]).length, (d.tax_types||[]).length) > 0 ? 
+                Array.from({length: Math.max((d.departments||[]).length, (d.fund_types||[]).length, (d.pay_methods||[]).length, (d.tax_types||[]).length)}, (_, i) => [
+                    (d.departments||[])[i]||'', (d.fund_types||[])[i]||'', (d.pay_methods||[])[i]||'', (d.tax_types||[])[i]||''
+                ]) : []
+            ]);
+
+            try { if(d.role_permissions) window.rolePermsMap = JSON.parse(d.role_permissions); } catch(e){}
+            updateRoleDatalist(); renderCharts();
+        }
+
+        function updateRoleDatalist() {
+            let roles = new Set(Object.keys(window.rolePermsMap)); roles.add('Admin'); roles.add('User'); roles.add('Banned');
+            let dl = document.getElementById('dl-roles'); if(!dl) return;
+            dl.innerHTML = Array.from(roles).map(a => `<option value="${a}">`).join('');
+        }
+
+        // --- FORMS LOGIC ---
+        function addFormRow(type) {
+            const tr = document.createElement('tr'); tr.className = "border-b border-slate-100 hover:bg-slate-50 d-row-"+type;
+            const btnDel = `<button onclick="this.closest('tr').remove()" class="p-2 text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition mx-auto flex"><i data-lucide="trash-2" size="16"></i></button>`;
+            const d = window.appData.configs || {};
+            if(type === 'ledger') {
+                const taxArr = d.tax_types && d.tax_types.length ? d.tax_types : ['ไม่มี VAT หัก 1%', 'จด VAT หัก 1%', 'ไม่มีภาษี'];
+                const taxes = taxArr.map(x=>`<option value="${x}">${x}</option>`).join('');
+                tr.innerHTML = `<td class="p-2"><input type="text" class="w-full p-2.5 border border-slate-200 rounded-lg _name" placeholder="ชื่อผู้รับ"></td><td class="p-2"><input type="text" class="w-full p-2.5 border border-slate-200 rounded-lg _desc" placeholder="รายการ"></td><td class="p-2"><input type="text" inputmode="decimal" class="w-full p-2.5 border border-slate-200 rounded-lg font-bold text-right _amt" onfocus="onMoneyFocus(this)" onblur="onMoneyBlur(this)" onkeyup="calcT(this)"></td><td class="p-2"><select class="w-full p-2.5 border border-slate-200 rounded-lg font-bold text-[11px] _tax" onchange="calcT(this)">${taxes}</select></td><td class="p-2"><input type="text" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-red-500 text-right font-bold _wht" readonly></td><td class="p-2"><input type="text" class="w-full p-2.5 bg-orange-50/50 border border-orange-200 rounded-lg text-primary text-right font-black _net" readonly></td><td class="p-2"><input list="dl-fund" class="w-full p-2.5 border border-slate-200 rounded-lg text-xs _fund" placeholder="เลือกหรือพิมพ์"></td><td class="p-2"><input type="text" class="w-full p-2.5 border border-slate-200 rounded-lg _gf"></td><td class="p-2 text-center align-middle">${btnDel}</td>`;
+            } else if(type === 'ext') {
+                tr.innerHTML = `<td class="p-2"><input type="text" class="w-full p-2.5 border border-slate-200 rounded-lg _desc"></td><td class="p-2"><input type="text" inputmode="decimal" class="w-full p-2.5 border border-slate-200 rounded-lg text-right font-bold _amt" onfocus="onMoneyFocus(this)" onblur="onMoneyBlur(this)"></td><td class="p-2"><input type="text" class="w-full p-2.5 border border-slate-200 rounded-lg _gf"></td><td class="p-2 text-center align-middle">${btnDel}</td>`;
+            } else if(type === 'income') {
+                tr.innerHTML = `<td class="p-2"><span class="text-slate-300 font-black pl-2">#</span></td><td class="p-2"><input type="text" class="w-full p-2.5 border border-slate-200 rounded-lg _desc" placeholder="รายการย่อย"></td><td class="p-2"><input type="text" inputmode="decimal" class="w-full p-2.5 border border-slate-200 rounded-lg text-right font-bold text-emerald-600 _amt" onfocus="onMoneyFocus(this)" onblur="onMoneyBlur(this)"></td><td class="p-2"><input type="text" class="w-full p-2.5 border border-slate-200 rounded-lg _gf"></td><td class="p-2 text-center align-middle">${btnDel}</td>`;
+            }
+            const tb = document.getElementById('rows-'+type); if(tb) { tb.appendChild(tr); lucide.createIcons(); }
+        }
+
+        // 1. ปรับปรุงฟังก์ชันคำนวณไม่ให้ใช้ return นอกกฎไวยากรณ์ (แก้บั๊ก Illegal return)
+        function calcT(el) {
+          if (!el) return;
+          
+          const r = el.closest('tr') || el.closest('.grid') || el.closest('#groupedRowsContainer > div') || el.closest('form');
+          if (!r) return;
+          
+          // ตรวจสอบว่าอยู่ในกล่องแก้ไขกลุ่มข้อมูลหรือไม่
+          const isEditMode = el.closest('#groupedRowsContainer') || (r.id && r.id.includes('edit'));
+          
+          if (isEditMode) {
+            // โหมดแก้ไขรายการ: ปล่อยผ่านให้ผู้ใช้พิมพ์ข้อความ/ตัวเลขแบบ Manual อิสระ
+            console.log("Edit mode detected: Calculation bypassed for manual entry.");
+          } else {
+            // โหมดเพิ่มรายการใหม่ปกติ: คำนวณภาษีและยอดสุทธิออโต้แบบเดิม
+            const amtEl = r.querySelector('._amt');
+            const taxEl = r.querySelector('._tax');
+            const whtEl = r.querySelector('._wht');
+            const netEl = r.querySelector('._net');
+            
+            if (amtEl && taxEl && whtEl && netEl) {
+              const amt = parseMoney(amtEl.value); 
+              const t = String(taxEl.value).trim();
+              const d = window.appData.configs || {}; 
+              const vatRate = parseFloat(d.vat_rate) || 7; 
+              const whtRate = parseFloat(d.wht_rate) || 1;
+              
+              let tx = 0, net = amt;
+              if (t === 'จด VAT หัก 1%') { 
+                  tx = (amt * (100 / (100 + vatRate))) * (whtRate / 100); 
+              } else if (t === 'ไม่มี VAT หัก 1%') { 
+                  tx = amt * (whtRate / 100); 
+              }
+              net = amt - tx; 
+              whtEl.value = formatNum(tx.toFixed(2)); 
+              netEl.value = formatNum(net.toFixed(2));
+            }
+          }
+        }
+
+        function calcDue(v, id) { if(!v) return; const d = new Date(v); d.setDate(d.getDate()+15); const el = document.getElementById(id); if(el && el._flatpickr) el._flatpickr.setDate(d); }
+        function calcLoanRemain(el) { const mBody = document.getElementById('modalBody'); if(!mBody) return; const amt = parseMoney(mBody.querySelector('#m-col-5').value); const ret = parseMoney(mBody.querySelector('#m-col-6').value); const comp = parseMoney(mBody.querySelector('#m-col-7').value); mBody.querySelector('#m-col-8').value = formatNum(amt - ret - comp); }
+
+        function submitData(type) {
+            let master = {}, details = [];
+            if(type === 'ledger') {
+                master = { seqNo: v('fm-seq'), docNo: v('fm-doc'), recvDate: v('fm-recv'), payDate: v('fm-pay'), method: v('fm-method'), payee: "", contract: v('fm-contract'), retDate: v('fm-retDate'), dept: v('fm-dept'), project: v('fm-project') };
+                document.querySelectorAll('.d-row-ledger').forEach(r => { if(r.querySelector('._amt').value) details.push({ name: r.querySelector('._name').value, desc: r.querySelector('._desc').value, amt: parseMoney(r.querySelector('._amt').value), tax: r.querySelector('._tax').value, wht: parseMoney(r.querySelector('._wht').value), net: parseMoney(r.querySelector('._net').value), fund: r.querySelector('._fund').value, gf: r.querySelector('._gf').value }); });
+            } else if(type === 'loan') {
+                master = { loanNo: v('fl-seq'), docNo: v('fl-doc'), method: v('fl-method'), borrower: v('fl-borrower'), desc: v('fl-desc'), amount: parseMoney(v('fl-amt')), dept: v('fl-dept'), fund: v('fl-fund'), email: v('fl-email'), project: v('fl-project'), category: v('fl-category'), date1: v('fl-d1'), gf1: v('fl-g1'), date2: v('fl-d2'), gf2: v('fl-g2') };
+            } else if(type === 'ext') {
+                master = { seqNo: v('fe-seq'), docNo: v('fe-doc'), payDate: v('fe-pay'), method: v('fe-method'), payee: v('fe-payee'), contract: v('fe-contract'), receipt: v('fe-receipt') };
+                document.querySelectorAll('.d-row-ext').forEach(r => { if(r.querySelector('._amt').value) details.push({ desc: r.querySelector('._desc').value, amt: parseMoney(r.querySelector('._amt').value), gf: r.querySelector('._gf').value }); });
+            } else if(type === 'income') {
+                master = { seqNo: v('fi-seq'), docNo: v('fi-doc'), date: v('fi-date'), type: v('fi-type'), name: v('fi-name') };
+                document.querySelectorAll('.d-row-income').forEach(r => { if(r.querySelector('._amt').value) details.push({ desc: r.querySelector('._desc').value, amt: parseMoney(r.querySelector('._amt').value), gf: r.querySelector('._gf').value }); });
+            }
+
+            if(type==='loan' && (!master.borrower || !master.amount)) return Swal.fire({title:'แจ้งเตือน', text:'กรุณาระบุชื่อและยอดเงิน', icon:'warning', confirmButtonColor:'#ED7D31'});
+            if(type!=='loan' && details.length===0) return Swal.fire({title:'แจ้งเตือน', text:'กรุณาเพิ่มรายการย่อยอย่างน้อย 1 รายการ', icon:'warning', confirmButtonColor:'#ED7D31'});
+
+            showActionLoader(true);
+            google.script.run.withSuccessHandler(rawRes => {
+                handleGASResponse(rawRes, (res) => {
+                    window.appData = Object.assign({ auth: {}, configs: {}, tables: {}, stats: {} }, res); 
+                    showActionLoader(false); Swal.fire({icon:'success', title:'บันทึกสำเร็จ!', timer: 1500, showConfirmButton:false});
+                    document.querySelectorAll(`#frm-${type} input:not(.init-today), #frm-${type} textarea`).forEach(i=> {if(!i.classList.contains('flatpickr-input')) i.value=''});
+                    document.querySelectorAll(`#frm-${type} input[type="date"]:not(.init-today)`).forEach(i=>{if(i._flatpickr) i._flatpickr.clear()});
+                    if(type !== 'loan') { const tb = document.getElementById('rows-'+type); if(tb) tb.innerHTML=''; addFormRow(type); }
+                    switchForm(type); updateStats();
+                });
+            }).saveFormData(type, master, details);
+        }
+
+        // --- GROUPING LOGIC & DYNAMIC ENGINE ---
+        function getGroupedData(tableType, rawData) {
+            if(!rawData || rawData.length <= 1) return [];
+            const rows = rawData.slice(1);
+            if(tableType === 'loans') return rows.map((r, i) => ({ master: r, details: [r], indices: [i+1] }));
+
+            let groupsMap = {}; let groupsArray = []; let keyCol = (tableType === 'income') ? 0 : 1; 
+            rows.forEach((r, i) => {
+                let key = r[keyCol]; if(key === "" || key === undefined) key = "NONE_" + i;
+                if(!groupsMap[key]) { groupsMap[key] = { master: [...r], details: [], indices: [] }; groupsArray.push(groupsMap[key]); }
+                groupsMap[key].details.push(r); groupsMap[key].indices.push(i + 1);
+
+                if(tableType === 'ledger') groupsMap[key].master[11] = groupsMap[key].details.reduce((sum, d) => sum + (parseFloat(d[11])||0), 0);
+                if(tableType === 'ext') groupsMap[key].master[9] = groupsMap[key].details.reduce((sum, d) => sum + (parseFloat(d[9])||0), 0);
+                if(tableType === 'income') groupsMap[key].master[6] = groupsMap[key].details.reduce((sum, d) => sum + (parseFloat(d[6])||0), 0);
+            });
+            return groupsArray;
+        }
+
+        function getDetailIndices(cols) {
+          let kw = [];
+          // เพิ่มคำว่า 'ภาษี' ลงใน Keyword เพื่อให้แสดงในหน้าแก้ไขรายการย่อย
+          if(activeTable === 'ledger') kw = ['ชื่อ', 'รายการ', 'จำนวนเงิน', 'ภาษี', '1%', 'สุทธิ', 'แหล่งเงิน', 'GF'];
+          else if(activeTable === 'ext') kw = ['รายการ', 'จำนวนเงิน', 'GF'];
+          else if(activeTable === 'income') kw = ['รายการ', 'จำนวนเงิน', 'GF'];
+          else return [];
+
+          let indices = kw.map(k => cols.findIndex(h => h && String(h).includes(k))).filter(i => i > -1);
+          return [...new Set(indices)];
+        }
+
+        function getMasterIndices(cols, detailIndices) {
+            let indices = [];
+            for(let i=0; i<cols.length; i++) {
+                let h = String(cols[i] || '');
+                if(activeTable === 'income' && (h.includes('เลขที่ บค') || h.includes('docNo'))) continue; // ซ่อนเลขที่ บค.
+                if(!detailIndices.includes(i) && cols[i]) indices.push(i);
+            }
+            return indices;
+        }
+
+        function getSummaryCols(cols) {
+          let kw = [];
+          // กำหนดคอลัมน์หน้ารวมให้ตรงตามที่คุณต้องการ
+          if(activeTable === 'ledger') kw = ['เลขที่บค.', 'วันที่ตรวจรับ','ชื่อผู้รับเงิน', 'โครงการ', 'สำนัก', 'สถานะเอกสาร'];
+          else if(activeTable === 'loans') kw = ['เลขที่บย.', 'เลขที่บค.', 'ชื่อ', 'รายละเอียด', 'จำนวนเงิน', 'สถานะ']; 
+          else if(activeTable === 'ext') kw = ['ลำดับ', 'เลขที่บค.', 'วันที่จ่าย', 'ชื่อผู้ติดต่อ'];
+          else if(activeTable === 'income') kw = ['ลำดับ', 'วันที่', 'ชื่อ', 'รายการ', 'ประเภท', 'ยอด', 'จำนวนเงิน'];
+          
+          let indices = kw.map(k => cols.findIndex(h => h && String(h).includes(k))).filter(i => i > -1);
+          if(indices.length === 0) indices = [0,1,2,3,4].filter(i => i < cols.length); 
+          return [...new Set(indices)];
+        }
+        function filterTable() {
+            const searchInput = document.getElementById('searchInput');
+            const q = searchInput ? searchInput.value.toLowerCase() : '';
+            const startInput = document.getElementById('filter-start');
+            const startStr = startInput ? startInput.value : '';
+            const endInput = document.getElementById('filter-end');
+            const endStr = endInput ? endInput.value : '';
+            const sortInput = document.getElementById('filter-sort');
+            const sortMode = sortInput ? sortInput.value : 'desc';
+            
+            const startD = startStr ? parseThaiDate(startStr) : 0;
+            const endD = endStr ? parseThaiDate(endStr) : Infinity;
+
+            const trs = Array.from(document.querySelectorAll('#tblBody tr.master-row'));
+            
+            trs.forEach(tr => {
+                let textMatch = tr.innerText.toLowerCase().includes(q);
+                let dateMatch = true;
+                let dateCell = tr.getAttribute('data-date');
+                if (dateCell && (startStr || endStr)) {
+                    let d = parseThaiDate(dateCell);
+                    dateMatch = (d >= startD && d <= endD);
+                }
+                tr.style.display = (textMatch && dateMatch) ? '' : 'none';
+            });
+
+            const tbody = document.getElementById('tblBody');
+            if(tbody && trs.length > 0) {
+                trs.sort((a, b) => {
+                    let d1 = parseThaiDate(a.getAttribute('data-date'));
+                    let d2 = parseThaiDate(b.getAttribute('data-date'));
+                    return sortMode === 'desc' ? d2 - d1 : d1 - d2;
+                });
+                trs.forEach(tr => tbody.appendChild(tr));
+            }
+        }
+
+        // --- GRID RENDERING ---
+        function renderTableData() {
+          const tData = window.appData.tables || {};
+          const rawData = tData[activeTable] || [];
+          const head = document.getElementById('tblHead'); 
+          const body = document.getElementById('tblBody');
+          if(head) head.innerHTML = ""; 
+          if(body) body.innerHTML = "";
+          
+          if(!rawData || rawData.length <= 1) {
+              if (head) head.innerHTML = '';
+              if (body) body.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-slate-500 font-bold bg-slate-50 rounded-xl">ไม่พบข้อมูล หรือยังไม่มีข้อมูลในระบบ</td></tr>`;
+              return;
+          }
+
+          if (activeTable === 'trash') {
+              head.innerHTML = `<tr><th class="p-4 border-b border-slate-700 bg-slate-800 text-white rounded-tl-2xl">เวลาที่ลบ</th><th class="p-4 border-b border-slate-700 bg-slate-800 text-white">ตารางต้นทาง</th><th class="p-4 border-b border-slate-700 bg-slate-800 text-white">ข้อมูล</th><th class="p-4 border-b border-slate-700 text-center sticky right-0 bg-[#1e293b] shadow-[-4px_0_6px_-1px_rgba(0,0,0,0.1)] border-l border-white/20 text-white rounded-tr-2xl z-20 __del_perm">จัดการ</th></tr>`;
+              const rows = rawData.slice(1); const now = new Date().getTime();
+              rows.forEach((r, idx) => {
+                  if(r.join('').trim() === "") return;
+                  let txtData = ''; try { let parsed = JSON.parse(r[2]); txtData = parsed.filter(x=>x!=='').join(' | ').substring(0, 100) + '...'; } catch(e){ txtData = r[2]; }
+                  let delDate = parseThaiDate(r[0]); let daysPassed = Math.floor((now - delDate) / (1000 * 60 * 60 * 24));
+                  let daysLeft = Math.max(0, 7 - daysPassed);
+                  let daysLeftHtml = `<div class="bg-rose-100 text-rose-600 px-2 py-1 rounded-md text-[10px] font-bold mt-1.5 w-fit border border-rose-200"><i data-lucide="clock" class="inline w-3 h-3 mb-0.5"></i> ลบถาวรใน ${daysLeft} วัน</div>`;
+
+                  body.innerHTML += `<tr class="hover:bg-rose-50/30 transition bg-white master-row">
+                      <td class="p-4 text-sm font-bold text-slate-700 whitespace-nowrap">${formatThaiDateString(r[0])} ${daysLeftHtml}</td>
+                      <td class="p-4 text-sm font-black text-rose-500">${r[1]}</td>
+                      <td class="p-4 text-xs text-slate-500 truncate max-w-[400px]">${txtData}</td>
+                      <td class="p-3 text-center sticky right-0 bg-white/90 border-l border-slate-100 __del_perm">
+                          <div class="flex items-center justify-center gap-1.5">
+                              <button onclick="restoreTrash(${idx})" class="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-500 hover:text-white transition shadow-sm font-bold text-xs flex gap-1"><i data-lucide="refresh-cw" size="14"></i> กู้คืน</button>
+                              <button onclick="deleteTrash(${idx})" class="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition shadow-sm font-bold text-xs flex gap-1"><i data-lucide="trash-2" size="14"></i> ลบถาวร</button>
+                          </div></td></tr>`;
+              });
+              lucide.createIcons(); applyTablePerms(); filterTable();
+              return;
+          }
+
+          window.groupedRecords = getGroupedData(activeTable, rawData);
+          const headerData = rawData[0] || [];
+          
+          let summaryCols = getSummaryCols(headerData);
+          let dateColIdx = headerData.findIndex(h => h && String(h).includes('วันที่'));
+          if(dateColIdx === -1) dateColIdx = 2; 
+
+          let hHtml = "<tr>";
+          summaryCols.forEach((colIdx, i) => {
+              let hName = headerData[colIdx] || '-';
+              if(activeTable === 'ledger' && String(hName).includes('สุทธิ')) hName = 'ยอดรวมสุทธิ';
+              if(activeTable === 'ext' && String(hName).includes('จำนวนเงิน')) hName = 'ยอดรวม';
+              if(activeTable === 'income' && String(hName).includes('ยอด')) hName = 'ยอดรวม';
+              hHtml += `<th onclick="sortTable(${colIdx})" class="p-4 border-b border-slate-700 font-bold whitespace-nowrap hover:text-blue-300 transition ${i===0?'rounded-tl-2xl pl-6':''}"><div class="flex items-center gap-1.5">${hName} <i data-lucide="chevrons-up-down" class="w-3 h-3 opacity-40"></i></div></th>`;
+          });
+          hHtml += `<th class="p-4 border-b border-slate-700 font-bold text-center sticky right-0 bg-[#1e293b] shadow-[-4px_0_6px_-1px_rgba(0,0,0,0.1)] border-l border-white/20 rounded-tr-2xl z-20">จัดการ</th></tr>`;
+          if(head) head.innerHTML = hHtml;
+
+          window.groupedRecords.forEach((group, groupIdx) => {
+              let r = group.master; 
+              let rawDate = r[dateColIdx] || '';
+              let subCountHtml = (activeTable !== 'loans' && activeTable !== 'debts' && group.details.length > 1) ? `<span class="ml-2 bg-blue-100 text-secondary px-2 py-0.5 rounded-md text-[10px] font-bold">${group.details.length} รายการ</span>` : '';
+              let bHtml = `<tr class="hover:bg-primary/5 transition bg-white group master-row" data-date="${rawDate}">`;
+              
+              summaryCols.forEach((ci, i) => {
+                  let cell = r[ci] || '';
+                  let hStr = String(headerData[ci] || '');
+                  let isD = typeof cell === 'string' && cell.match(/^\d{4}-\d{2}-\d{2}$/);
+                  let isN = !isNaN(parseFloat(cell)) && cell!=="" && String(cell).indexOf('-')===-1 && String(cell).length<10 && isMoneyField(hStr);
+                  let txt = isD ? formatThaiDateString(cell) : isN ? formatNum(cell) : cell;
+                  let cls = "p-4 text-sm truncate max-w-[250px] border-b border-slate-100/50 group-hover:border-primary/10 transition";
+                  if(i===0) { cls += " font-black text-slate-800 pl-6"; txt += subCountHtml; }
+                  if(isN) cls += " text-right font-black text-secondary";
+                  
+                  if(hStr === 'สถานะ' || hStr.includes('สถานะ')) {
+                      if(cell==='ล้างหนี้แล้ว' || cell==='ครบแล้ว') txt = `<span class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-200 flex items-center justify-center gap-1 w-fit mx-auto"><i data-lucide="check-circle" class="w-3 h-3"></i> ${cell}</span>`;
+                      else txt = `<span class="bg-red-50 text-red-500 px-3 py-1.5 rounded-lg text-xs font-bold border border-red-200 flex items-center justify-center gap-1 w-fit mx-auto"><i data-lucide="clock" class="w-3 h-3"></i> ${cell}</span>`;
+                      cls += " text-center";
+                  }
+                  bHtml += `<td class="${cls}" title="${cell}">${txt}</td>`;
+              });
+              
+              let recordKey = `${activeTable}_${r[0]}`; 
+              bHtml += `<td class="p-3 text-center sticky right-0 bg-white/90 group-hover:bg-orange-50/90 border-l border-b border-slate-100/50 backdrop-blur-sm z-0 transition">
+                      <div class="flex items-center justify-center gap-1.5">
+                          <button onclick="openPdfManager('${recordKey}')" class="p-2 bg-blue-50 text-secondary rounded-xl hover:bg-secondary hover:text-white transition shadow-sm __edit_perm" title="จัดการไฟล์แนบ PDF"><i data-lucide="paperclip" size="16"></i></button>
+                          <button onclick="viewGroupedRow(${groupIdx})" class="p-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition shadow-sm __view_perm" title="ดูรายละเอียด"><i data-lucide="eye" size="16"></i></button>
+                          <button onclick="editGroupedRow(${groupIdx})" class="p-2 bg-secondary/10 text-secondary rounded-xl hover:bg-secondary hover:text-white transition shadow-sm __edit_perm" title="แก้ไข"><i data-lucide="edit-3" size="16"></i></button>
+                          <button onclick="deleteGroupedRow(${groupIdx})" class="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition shadow-sm __del_perm" title="ลบทั้งหมด"><i data-lucide="trash-2" size="16"></i></button>
+                      </div></td></tr>`;
+              if(body) body.innerHTML += bHtml;
+          });
+          lucide.createIcons(); applyTablePerms(); filterTable();
+        }
+
+        function sortTable(colIdx) {
+            const data = (window.appData.tables || {})[activeTable]; if (!data) return;
+            const header = data[0]; let rows = data.slice(1);
+            sortAsc = sortCol === colIdx ? !sortAsc : true; sortCol = colIdx;
+            rows.sort((a, b) => {
+                let v1 = a[colIdx], v2 = b[colIdx];
+                let d1 = parseThaiDate(v1); let d2 = parseThaiDate(v2);
+                if(d1 > 0 && d2 > 0 && isNaN(parseFloat(v1)) && isNaN(parseFloat(v2))) return sortAsc ? d1 - d2 : d2 - d1;
+                if(!isNaN(parseFloat(v1)) && !isNaN(parseFloat(v2))) return sortAsc ? parseFloat(v1) - parseFloat(v2) : parseFloat(v2) - parseFloat(v1);
+                v1 = String(v1).toLowerCase(); v2 = String(v2).toLowerCase()
+                return sortAsc ? v1.localeCompare(v2) : v2.localeCompare(v1);
+            });
+            window.appData.tables[activeTable] = [header, ...rows]; renderTableData();
+        }
+
+
+        // 🌟 เพิ่มฟังก์ชันตรวจสอบฟิลด์การเงินไว้ด้านบนสุดเพื่อให้ระบบรู้จักช่องสุทธิ
+          // 🌟 แก้ไขฟังก์ชันตรวจสอบฟิลด์การเงินให้ฉลาดขึ้น ไม่ดักจับมั่ว
+          function isMoneyField(h) {
+            const txt = String(h || '').trim();
+            // ถ้าเป็นชื่อผู้รับเงิน, ประเภทเงิน หรือมีคำว่า "วันที่" ให้ข้ามไปเลย ไม่ใช่ฟิลด์จำนวนเงิน
+            if (txt === 'ชื่อผู้รับเงิน' || txt === 'ประเภทเงิน' || txt.includes('วันที่')) return false;
+            
+            return txt.includes('เงิน') || txt.includes('สุทธิ') || txt.includes('1%') || txt.includes('ภาษีหัก') || txt.includes('ชดใช้') || txt.includes('คืน') || txt.includes('ยืม');
+          }
+          const renderField = (h, v, fId) => {
+            const hStr = String(h || '').trim();
+            const vStr = (v === undefined || v === null) ? '' : String(v).trim();
+            
+            // ชุดตัวเลือกประเภทภาษี 3 แบบของคุณ
+            const fixedTaxArr = ['ไม่มี VAT หัก 1%', 'จด VAT หัก 1%', 'ไม่มีภาษี'];
+
+            // 1. ตรวจสอบกลุ่มฟิลด์การเงินก่อนสิ่งอื่นใด (ดักจับ จำนวนเงิน, ภาษีที่เป็นเงิน %, สุทธิ, รวมสุทธิ, ยืม, คืน, ชดใช้)
+// 1. ตรวจสอบกลุ่มฟิลด์การเงิน (จำนวนเงิน, สุทธิ, ยืม, คืน, ชดใช้) *ยกเว้น ชื่อผู้รับเงิน, ประเภทเงิน และวันที่*
+            const isMoney = (hStr.includes('เงิน') || hStr.includes('สุทธิ') || hStr.includes('1%') || hStr.includes('ชดใช้') || hStr.includes('คืน') || hStr.includes('ยืม')) 
+                && hStr !== 'ชื่อผู้รับเงิน' 
+                && hStr !== 'ประเภทเงิน' 
+                && !hStr.includes('วันที่');            
+            if (isMoney) {
+              let extra = fId.includes('edit') ? '' : `onkeyup="calcT(this)"`;
+              if (!fId.includes('edit') && activeTable === 'loans' && ['เงินยืม','เงินคืน','ชดใช้'].some(k=>hStr.includes(k))) {
+                extra = `onkeyup="calcLoanRemain(this); calcT(this);"`;
+              }
+              
+              // แยกประเภท Class ให้ถูกต้องแม่นยำ
+              let clsAmt = '_amt';
+              if (hStr.includes('1%') || hStr.includes('ภาษีหัก')) clsAmt = '_wht';
+              if (hStr.includes('สุทธิ')) clsAmt = '_net';
+              
+              // จัดการสิทธิ์การล็อกช่อง (Readonly)
+              let readonly = '';
+              if (hStr.includes('เหลือ')) {
+                readonly = 'readonly style="background:#f8fafc;"';
+              } else if (hStr.includes('สุทธิ') && fId.includes('edit')) {
+                // 🌟 ปลดล็อกช่องสุทธิให้กลายเป็นช่องสีขาว พิมพ์ตัวเลข Manual ได้อิสระทันทีในหน้าแก้ไข!
+                readonly = ''; 
+              } else if (!fId.includes('edit') && (hStr.includes('1%') || hStr.includes('สุทธิ'))) {
+                // โหมดเพิ่มรายการปกติ ให้ล็อกไว้เพื่อรอรับสูตรออโต้
+                readonly = 'readonly style="background:#f8fafc;"'; 
+              }
+              
+              let displayVal = (vStr === 'undefined' || vStr === 'null' || !vStr) ? '' : formatNum(vStr);
+              return `<input type="text" inputmode="decimal" id="${fId}" class="w-full p-2.5 border border-slate-200 rounded-lg bg-white focus:border-primary font-black text-secondary shadow-sm ${clsAmt}" value="${displayVal}" ${readonly} onfocus="onMoneyFocus(this)" onblur="onMoneyBlur(this)" ${extra}>`;
+            }
+
+            // 2. ดักจับกล่องเลือกประเภทภาษี (ไม่มี VAT, จด VAT, ไม่มีภาษี)
+            if (hStr.includes('ภาษี') && !hStr.includes('1%')) {
+                let taxExtra = fId.includes('edit') ? '' : 'onchange="calcT(this)"';
+                return `<select id="${fId}" class="w-full p-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-primary shadow-sm _tax" ${taxExtra}>${fixedTaxArr.map(x=>`<option value="${x}" ${x===vStr?'selected':''}>${x}</option>`).join('')}</select>`;
+            }
+
+            // 3. ดักจับเงื่อนไขฟิลด์อื่น ๆ ตามปกติของโปรแกรม
+            if (hStr.includes('สถานะ') && hStr.includes('เอกสาร')) {
+                return `<select id="${fId}" class="w-full p-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-primary shadow-sm font-bold ${vStr==='ครบแล้ว'?'text-emerald-600':'text-amber-500'}">
+                            <option value="ยังไม่ครบ" ${vStr!=='ครบแล้ว'?'selected':''}>ยังไม่ครบ</option>
+                            <option value="ครบแล้ว" ${vStr==='ครบแล้ว'?'selected':''}>ครบแล้ว</option>
+                        </select>`;
+            }
+            if (hStr.includes('วันที่') || hStr.includes('รับใบ')) {
+                return `<input type="date" id="${fId}" class="w-full p-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-primary shadow-sm _flatpickr" value="${cleanDateForInput(vStr)}">`;
+            }
+            if (hStr.includes('สำนัก')) {
+                return `<input list="dl-dept" id="${fId}" class="w-full p-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-primary shadow-sm" value="${vStr}">`;
+            }
+            if (hStr.includes('แหล่งเงิน') || hStr.includes('ประเภทเงิน')) {
+                return `<input list="dl-fund" id="${fId}" class="w-full p-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-primary shadow-sm _fund" value="${vStr}">`;
+            }
+            if (hStr === 'CHQ.' || hStr === 'PAID' || hStr.includes('ชำระ') || hStr === 'ประเภท') {
+                return `<input list="dl-method" id="${fId}" class="w-full p-2.5 border border-slate-200 rounded-lg bg-white focus:border-primary shadow-sm _method" value="${vStr}">`;
+            }
+            if (hStr === 'สถานะ' && activeTable === 'loans') {
+                return `<select id="${fId}" class="w-full p-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-primary shadow-sm font-bold ${vStr==='ล้างหนี้แล้ว'?'text-emerald-600':'text-red-500'}">
+                            <option value="ค้างชำระ" ${vStr!=='ล้างหนี้แล้ว'?'selected':''}>ค้างชำระ</option>
+                            <option value="ล้างหนี้แล้ว" ${vStr==='ล้างหนี้แล้ว'?'selected':''}>ล้างหนี้แล้ว</option>
+                        </select>`;
+            }
+            if (hStr === 'สถานะ') {
+                return `<input type="text" id="${fId}" class="w-full p-2.5 bg-slate-100 font-bold text-slate-500 rounded-lg" value="${vStr}" readonly>`;
+            }
+            if (hStr.includes('รายละเอียด') || hStr.includes('รายการ') || hStr.includes('โครงการ')) {
+                return `<input type="text" id="${fId}" class="w-full p-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-primary shadow-sm _desc" value="${vStr}">`;
+            }
+            
+            // ฟิลด์ข้อความทั่วไป (รวมถึง ชื่อผู้รับเงิน, เลขสัญญา ฯลฯ)
+            let extraCls = hStr.includes('ชื่อ') ? '_name' : hStr.includes('GF') ? '_gf' : '';
+            return `<input type="text" id="${fId}" class="w-full p-2.5 border border-slate-200 rounded-lg bg-white focus:border-primary font-bold text-slate-700 shadow-sm ${extraCls}" value="${vStr}">`;
+          };
+
+        function viewGroupedRow(groupIdx) {
+            const group = window.groupedRecords[groupIdx]; const cols = window.appData.tables[activeTable][0] || []; const m = group.master;
+            document.getElementById('modalTitle').innerHTML = `<div class="p-2.5 bg-secondary text-white rounded-xl shadow-sm"><i data-lucide="layout-list"></i></div> รายละเอียดแบบครบถ้วน`;
+            
+            const fmtView = (v, h) => {
+                if(!v) return '-';
+                let hStr = String(h || '');
+                let isD = typeof v === 'string' && v.match(/^\d{4}-\d{2}-\d{2}/);
+                let isN = !isNaN(parseFloat(v)) && v!=="" && String(v).indexOf('-')===-1 && String(v).length<10 && isMoneyField(hStr);
+                return isD ? formatThaiDateString(v) : isN ? formatNum(v) : v;
+            };
+
+            window.editDetailIndices = getDetailIndices(cols);
+            let masterIndices = getMasterIndices(cols, window.editDetailIndices);
+
+            let html = '<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6"><h4 class="font-black text-lg text-primary mb-4 flex items-center gap-2 border-b pb-2"><i data-lucide="info"></i> ข้อมูลหลัก</h4><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">';
+            masterIndices.forEach(i => {
+                let h = cols[i] || ''; let v = m[i] || ''; let colSpan = (String(h).includes('รายละเอียด') || String(h).includes('รายการ') || String(h).includes('โครงการ')) ? "md:col-span-2 lg:col-span-3" : "";
+                html += `<div class="${colSpan}"><p class="text-[10px] uppercase font-bold text-secondary mb-1 tracking-wider">${h || '-'}</p><p class="text-sm font-black text-slate-800 break-words">${fmtView(v, h)}</p></div>`;
+            });
+            html += '</div></div>';
+
+            if(activeTable !== 'loans') {
+                html += `<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><h4 class="font-black text-lg text-emerald-600 mb-4 flex items-center gap-2 border-b pb-2"><i data-lucide="list-checks"></i> รายการย่อย</h4>`;
+                html += `<div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead class="bg-slate-100 text-slate-500 font-bold text-[11px] uppercase"><tr>`;
+                window.editDetailIndices.forEach(i => { html += `<th class="p-3 whitespace-nowrap">${cols[i] || '-'}</th>`; });
+                html += `</tr></thead><tbody class="divide-y divide-slate-100">`;
+                group.details.forEach(d => {
+                    html += `<tr>`; window.editDetailIndices.forEach(i => { html += `<td class="p-3 ${isMoneyField(cols[i])?'text-right font-black text-secondary':'text-slate-700'}">${fmtView(d[i], cols[i])}</td>`; }); html += `</tr>`;
+                });
+                html += `</tbody></table></div></div>`;
+            }
+
+            document.getElementById('modalBody').innerHTML = html; document.getElementById('modalSaveBtn').classList.add('hidden'); openModal();
+        }
+
+        function editGroupedRow(groupIdx) {
+            window.editingGroupIndex = groupIdx;
+            const group = window.groupedRecords[groupIdx]; const cols = window.appData.tables[activeTable][0] || []; const m = group.master;
+            document.getElementById('modalTitle').innerHTML = `<div class="p-2.5 bg-primary text-white rounded-xl shadow-sm"><i data-lucide="edit"></i></div> แก้ไขข้อมูลบัญชี (รวมรายการย่อย)`;
+
+            window.editDetailIndices = getDetailIndices(cols);
+            let masterIndices = getMasterIndices(cols, window.editDetailIndices);
+
+            let html = `<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6"><h4 class="font-black text-lg text-primary mb-4 flex items-center gap-2 border-b pb-2"><i data-lucide="info"></i> ข้อมูลหลัก</h4><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">`;
+            masterIndices.forEach(i => { 
+                let h = String(cols[i] || '').trim(); let colSpan = (h.includes('รายละเอียด') || h.includes('โครงการ')) ? "md:col-span-2 lg:col-span-4" : ""; 
+                let inp = renderField(h, m[i], `m-col-${i}`);
+                html += `<div class="${colSpan}"><label class="block text-[11px] uppercase font-bold text-slate-500 mb-1 tracking-wide pl-1">${h || '-'}</label>${inp}</div>`; 
+            });
+            html += `</div></div>`;
+
+            if(activeTable !== 'loans') {
+                html += `<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><div class="flex justify-between items-center mb-4 border-b pb-2"><h4 class="font-black text-lg text-emerald-600 flex items-center gap-2"><i data-lucide="list-checks"></i> รายการย่อย</h4><button onclick="addEditRow()" class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-500 hover:text-white transition flex gap-1"><i data-lucide="plus" size="14"></i> เพิ่ม</button></div>`;
+                html += `<div class="overflow-x-auto"><table class="w-full text-sm text-left min-w-[800px]"><thead class="bg-slate-100 text-slate-500 font-bold text-[11px] uppercase"><tr>`;
+                
+                window.editDetailIndices.forEach(i => { html += `<th class="p-3 whitespace-nowrap">${cols[i] || '-'}</th>`; });
+                html += `<th class="p-3 w-10 text-center">ลบ</th></tr></thead><tbody id="edit-details-body" class="divide-y divide-slate-100">`;
+                
+                group.details.forEach((d, rIdx) => {
+                    html += `<tr class="edit-d-row">`; 
+                    window.editDetailIndices.forEach(i => { 
+                        let inp = renderField(cols[i], d[i], `d-${rIdx}-col-${i}`);
+                        html += `<td class="p-2">${inp}</td>`; 
+                    }); 
+                    html += `<td class="p-2 text-center align-middle"><button onclick="this.closest('tr').remove()" class="p-1.5 bg-red-50 text-red-500 rounded-md hover:bg-red-500 hover:text-white"><i data-lucide="trash-2" size="14"></i></button></td></tr>`;
+                });
+                html += `</tbody></table></div></div>`;
+            }
+
+            document.getElementById('modalBody').innerHTML = html; 
+            document.getElementById('modalSaveBtn').classList.remove('hidden');
+            openModal(); 
+            safeInitFlatpickr("._flatpickr");
+
+            // 🌟 แทรกโค้ดผูกระบบคำนวณภาษีอัตโนมัติสำหรับหน้าแก้ไข (เวอร์ชันอัปเดตสูตรถอด VAT 7%)
+            setTimeout(() => {
+                const mBody = document.getElementById('modalBody');
+                
+                // ฟังก์ชันแยกสูตรคำนวณตามประเภทภาษี
+                const calculateNetValue = (amt, taxType) => {
+                    let net = amt;
+
+                    if (taxType === 'ไม่มี VAT หัก 1%') {
+                        // 1. ไม่มี VAT หัก 1% -> หัก 1% จากยอดเต็มทันที
+                        net = amt * 0.99; 
+                    } 
+                    else if (taxType === 'จด VAT หัก 1%') {
+                        // 2. จด VAT หัก 1% -> ถอด VAT 7% ออกก่อน แล้วค่อยหัก 1% จากยอดที่ถอดแล้ว
+                        let baseAmount = amt / 1.07;   // ฐานเงินก่อน VAT
+                        let wht1Percent = baseAmount * 0.01; // ยอดหัก ณ ที่จ่าย 1%
+                        net = amt - wht1Percent;       // ยอดรวมสุทธิที่ต้องจ่าย
+                    } 
+                    else if (taxType === 'ไม่มีภาษี') {
+                        // 3. ไม่มีภาษี -> จ่ายยอดเต็มปกติ
+                        net = amt;
+                    }
+
+                    return net;
+                };
+
+                // ฟังก์ชันหลักในการสั่งรันคำนวณบนหน้าจอ
+                const recalcEdit = () => {
+                    const taxSelect = mBody.querySelector('._tax'); 
+                    const taxType = taxSelect ? taxSelect.value.trim() : '';
+                    const detailRows = mBody.querySelectorAll('.edit-d-row');
+                    
+                    if (detailRows.length > 0) {
+                        // แบบที่ 1: มีตารางรายการย่อย (ลูปคำนวณทุกบรรทัด)
+                        detailRows.forEach(row => {
+                            const amtInp = row.querySelector('._amt');
+                            const netInp = row.querySelector('._net');
+                            if (amtInp && netInp) {
+                                let amt = parseFloat(amtInp.value.replace(/,/g, '')) || 0;
+                                let net = calculateNetValue(amt, taxType);
+                                netInp.value = net.toFixed(2);
+                            }
+                        });
+                    } else {
+                        // แบบที่ 2: ไม่มีตารางย่อย (เป็นข้อมูลแถวเดียว)
+                        const amtInp = mBody.querySelector('._amt');
+                        const netInp = mBody.querySelector('._net');
+                        if (amtInp && netInp) {
+                            let amt = parseFloat(amtInp.value.replace(/,/g, '')) || 0;
+                            let net = calculateNetValue(amt, taxType);
+                            netInp.value = net.toFixed(2);
+                        }
+                    }
+                };
+
+                // ดักจับเหตุการณ์พิมพ์ตัวเลขจำนวนเงิน หรือเปลี่ยนดรอปดาวน์ภาษี
+                mBody.addEventListener('input', (e) => {
+                    if (e.target.classList.contains('_amt')) recalcEdit();
+                });
+                mBody.addEventListener('change', (e) => {
+                    if (e.target.classList.contains('_tax')) recalcEdit();
+                });
+
+            }, 200);
+
+        } // ปิดฟังก์ชัน editGroupedRow เดิมของคุณ
+        
+
+        function addEditRow() {
+            const tb = document.getElementById('edit-details-body'); if(!tb) return;
+            const rIdx = tb.children.length + 100; const cols = window.appData.tables[activeTable][0] || [];
+            
+            let trHtml = `<tr class="edit-d-row">`; 
+            window.editDetailIndices.forEach(i => { 
+                let inp = renderField(cols[i], '', `d-${rIdx}-col-${i}`);
+                trHtml += `<td class="p-2">${inp}</td>`; 
+            });
+            trHtml += `<td class="p-2 text-center align-middle"><button onclick="this.closest('tr').remove()" class="p-1.5 bg-red-50 text-red-500 rounded-md hover:bg-red-500 hover:text-white"><i data-lucide="trash-2" size="14"></i></button></td></tr>`;
+            tb.insertAdjacentHTML('beforeend', trHtml); lucide.createIcons();
+        }
+
+
+        function getGroupedRowsData() {
+          const container = document.getElementById('groupedRowsContainer');
+          if (!container) return [];
+          
+          const rows = container.querySelectorAll('.grid, tr, #groupedRowsContainer > div');
+          let results = [];
+          
+          rows.forEach(r => {
+            let inputs = r.querySelectorAll('input, select');
+            if (inputs.length === 0) return;
+            
+            let rowData = new Array(30).fill(null);
+            let hasValues = false;
+            
+            inputs.forEach(input => {
+              if (!input.id) return;
+              
+              let match = input.id.match(/\d+$/);
+              if (!match) return;
+              
+              let colIdx = parseInt(match[0]);
+              let val = input.value;
+              
+              // ดึงและแปลงค่าเงินจากคลาสเงินทั้งหมด ไม่ให้กลายเป็น 0
+              if (input.classList.contains('_amt') || input.classList.contains('_wht') || input.classList.contains('_net')) {
+                let parsedNum = parseMoney(val || "0");
+                rowData[colIdx] = isNaN(parsedNum) ? 0 : parsedNum;
+              } else {
+                rowData[colIdx] = (val === undefined || val === null) ? "" : String(val).trim();
+              }
+              hasValues = true;
+            });
+            
+            if (hasValues) {
+              results.push(rowData);
+            }
+          });
+          
+          return results;
+        }
+
+
+
+        function saveEditData() {
+            if(window.editingGroupIndex === undefined) return;
+            const group = window.groupedRecords[window.editingGroupIndex]; const len = window.appData.tables[activeTable][0].length; const originalIndices = group.indices; 
+            let newRowsData = [];
+
+            if (activeTable === 'loans') {
+                let row = []; 
+                for (let i = 0; i < len; i++) {
+                    let h = String(window.appData.tables[activeTable][0][i] || '');
+                    let el = document.getElementById(`m-col-${i}`);
+                    let val = el ? el.value : (group.master[i] || "");
+                    row.push(isMoneyField(h) ? parseMoney(val) : val);
+                }
+                newRowsData.push(row);
+            } else {
+                const detailRows = document.querySelectorAll('.edit-d-row');
+                detailRows.forEach((tr, rIdx) => {
+                    let row = [];
+                    for (let i = 0; i < len; i++) {
+                        let h = String(window.appData.tables[activeTable][0][i] || '');
+                        let dInput = tr.querySelector(`[id$="-col-${i}"]`); let mInput = document.getElementById(`m-col-${i}`);
+                        let val = dInput ? dInput.value : mInput ? mInput.value : (group.master[i] || "");
+                        row.push(isMoneyField(h) ? parseMoney(val) : val);
+                    }
+                    newRowsData.push(row);
+                });
+            }
+
+            if(newRowsData.length === 0) return Swal.fire({title:'แจ้งเตือน', text:'กรุณาเพิ่มรายการย่อยอย่างน้อย 1 รายการ', icon:'warning'});
+
+            closeModal(); showActionLoader(true);
+            const c = window.appData.configs || {}; const sheetMap = { 'ledger': c.ledger_sheet || 'db_ledger', 'loans': c.loan_sheet || 'ทะเบียนคุมใบยืม', 'ext': 'ทะเบียนคุมเงินนอก', 'income': 'รายได้อื่น' };
+            
+            google.script.run.withSuccessHandler(rawRes => {
+                handleGASResponse(rawRes, (res) => {
+                    window.appData = Object.assign({ auth: {}, configs: {}, tables: {}, stats: {} }, res); 
+                    renderTableData(); updateStats(); showActionLoader(false); Swal.fire({icon:'success', title:'บันทึกเรียบร้อย', timer:1500, showConfirmButton:false}); 
+                });
+            }).withFailureHandler(err => {
+                showActionLoader(false); Swal.fire('Error', err.message, 'error');
+            }).updateGroupedData(sheetMap[activeTable], originalIndices, newRowsData);
+        }
+
+        // --- EXPORT & OTHERS ---
+        function deleteGroupedRow(groupIdx) {
+            Swal.fire({ title: 'ย้ายลงถังขยะทั้งกลุ่ม?', text: "รายการหลักและย่อยทั้งหมดจะถูกลบ (กู้คืนได้ 7 วัน)", icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'ย้ายลงถังขยะ'
+            }).then((res) => {
+                if(res.isConfirmed) {
+                    showActionLoader(true);
+                    const originalIndices = window.groupedRecords[groupIdx].indices; const c = window.appData.configs || {}; const sheetMap = { 'ledger': c.ledger_sheet || 'db_ledger', 'loans': c.loan_sheet || 'ทะเบียนคุมใบยืม', 'ext': 'ทะเบียนคุมเงินนอก', 'income': 'รายได้อื่น' };
+                    google.script.run.withSuccessHandler(rawRes => {
+                        handleGASResponse(rawRes, (data) => {
+                            window.appData = Object.assign({ auth: {}, configs: {}, tables: {}, stats: {} }, data); renderTableData(); updateStats(); showActionLoader(false); Swal.fire({icon:'success', title:'ย้ายลงถังขยะแล้ว', timer:1500, showConfirmButton:false}); 
+                        });
+                    }).withFailureHandler(err => {
+                        showActionLoader(false); Swal.fire('Error', err.message, 'error');
+                    }).deleteGroupedData(sheetMap[activeTable], originalIndices);
+                }
+            });
+        }
+
+        function restoreTrash(idx) {
+            showActionLoader(true);
+            google.script.run.withSuccessHandler(rawRes => {
+                handleGASResponse(rawRes, (data) => {
+                    window.appData = Object.assign({ auth: {}, configs: {}, tables: {}, stats: {} }, data); renderTableData(); updateStats(); showActionLoader(false); Swal.fire({icon:'success', title:'กู้คืนสำเร็จ', timer:1500, showConfirmButton:false}); 
+                });
+            }).restoreFromTrash(idx);
+        }
+
+        function deleteTrash(idx) {
+            Swal.fire({ title: 'ลบถาวร?', text: "ไม่สามารถกู้คืนได้อีก", icon: 'error', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'ลบถาวร'
+            }).then((res) => {
+                if(res.isConfirmed) {
+                    showActionLoader(true);
+                    google.script.run.withSuccessHandler(rawRes => {
+                        handleGASResponse(rawRes, (data) => {
+                            window.appData = Object.assign({ auth: {}, configs: {}, tables: {}, stats: {} }, data); renderTableData(); updateStats(); showActionLoader(false); Swal.fire({icon:'success', title:'ลบถาวรแล้ว', timer:1500, showConfirmButton:false}); 
+                        });
+                    }).permanentDeleteTrash(idx);
+                }
+            });
+        }
+
+        function openModal() { const m = document.getElementById('univModal'); m.classList.remove('hidden'); setTimeout(() => { m.classList.remove('opacity-0'); document.getElementById('univModalContent').classList.remove('scale-95'); }, 10); lucide.createIcons(); }
+        function closeModal() { const m = document.getElementById('univModal'); m.classList.add('opacity-0'); document.getElementById('univModalContent').classList.add('scale-95'); setTimeout(() => m.classList.add('hidden'), 300); window.editingRowIndex = -1; window.editingGroupIndex = undefined; }
+
+        function exportToExcelDirect() {
+            if(activeTable === 'trash') return Swal.fire('แจ้งเตือน', 'ไม่สามารถ Export ถังขยะได้', 'warning');
+            const tableMap = { 'ledger': 'ใบคุมบัญชี', 'loans': 'ทะเบียนใบยืม', 'ext': 'เงินนอก', 'income': 'รายได้อื่น' };
+            const rawData = window.appData.tables[activeTable];
+            if(!rawData || rawData.length === 0) return Swal.fire('Error', 'ไม่มีข้อมูลให้ Export', 'error');
+
+            const searchInput = document.getElementById('searchInput');
+            const q = searchInput ? searchInput.value.toLowerCase() : '';
+            const startInput = document.getElementById('filter-start');
+            const startStr = startInput ? startInput.value : '';
+            const endInput = document.getElementById('filter-end');
+            const endStr = endInput ? endInput.value : '';
+            const sortInput = document.getElementById('filter-sort');
+            const sortMode = sortInput ? sortInput.value : 'desc';
+
+            const visibleTrs = document.querySelectorAll('#tblBody tr.master-row');
+            if(visibleTrs.length === 0) return Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลที่ตรงกับเงื่อนไขการค้นหา', 'info');
+
+            let exportData = [rawData[0]]; 
+            const startD = startStr ? parseThaiDate(startStr) : 0; const endD = endStr ? parseThaiDate(endStr) : Infinity;
+
+            let filteredGroups = window.groupedRecords.filter(g => {
+                let searchStr = g.master.join(' ').toLowerCase() + ' ' + g.details.map(d=>d.join(' ')).join(' ').toLowerCase();
+                let textMatch = searchStr.includes(q);
+                let dateMatch = true; let dateColIdx = activeTable === 'ledger' ? 3 : activeTable === 'loans' ? 9 : 2; let rawDate = g.master[dateColIdx];
+                if (rawDate && (startStr || endStr)) { let d = parseThaiDate(rawDate); dateMatch = (d >= startD && d <= endD); }
+                return textMatch && dateMatch;
+            });
+
+            filteredGroups.sort((a, b) => {
+                let dateColIdx = activeTable === 'ledger' ? 3 : activeTable === 'loans' ? 9 : 2;
+                let d1 = parseThaiDate(a.master[dateColIdx]); let d2 = parseThaiDate(b.master[dateColIdx]);
+                return sortMode === 'desc' ? d2 - d1 : d1 - d2;
+            });
+
+            filteredGroups.forEach(g => {
+                g.details.forEach((d, dIdx) => {
+                    if (dIdx === 0 || activeTable === 'loans') {
+                        exportData.push([...d]);
+                    } else {
+                        let newRow = [...d];
+                        let mCols = [];
+                        if (activeTable === 'ledger') mCols = [0,1,2,3,4,6,7,14,15, rawData[0].findIndex(h=>h&&String(h).includes('สถานะ')&&String(h).includes('เอกสาร'))]; 
+                        else if (activeTable === 'ext') mCols = [0,1,2,3,4,5,6,7, rawData[0].findIndex(h=>h&&String(h).includes('สถานะ')&&String(h).includes('เอกสาร'))]; 
+                        else if (activeTable === 'income') mCols = [0,1,2,3,4]; 
+                        
+                        mCols.filter(c=>c>-1).forEach(c => { if (c < newRow.length) newRow[c] = ""; });
+                        exportData.push(newRow);
+                    }
+                });
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(exportData); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Data");
+            const today = new Date(); const fn = `Export_${tableMap[activeTable]}_${today.getFullYear()}${(today.getMonth()+1).toString().padStart(2,'0')}${today.getDate().toString().padStart(2,'0')}.xlsx`;
+            XLSX.writeFile(wb, fn);
+        }
+
+        // --- PDF MANAGER ---
+        function openPdfManager(recordKey) {
+            currentRecordKey = recordKey;
+            document.getElementById('pdfModal').classList.remove('hidden');
+            setTimeout(() => { document.getElementById('pdfModal').classList.remove('opacity-0'); document.getElementById('pdfModalContent').classList.remove('scale-95'); }, 10);
+            showActionLoader(true);
+            google.script.run.withSuccessHandler(rawRes => {
+                showActionLoader(false);
+                try { currentAttachments = typeof rawRes === 'string' ? JSON.parse(rawRes) : rawRes; } catch(e) { currentAttachments = []; }
+                renderPdfList();
+            }).fetchAttachments(recordKey);
+        }
+
+        function closePdfModal() {
+            document.getElementById('pdfModal').classList.add('opacity-0'); document.getElementById('pdfModalContent').classList.add('scale-95');
+            setTimeout(() => document.getElementById('pdfModal').classList.add('hidden'), 300); currentRecordKey = ""; currentAttachments = [];
+        }
+
+        function handleFileUpload(e) {
+            const files = e.target.files; if(!files || files.length === 0) return;
+            showActionLoader(true); let processed = 0;
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const base64Data = e.target.result.split(',')[1];
+                    google.script.run.withSuccessHandler(rawRes => {
+                        try { currentAttachments = typeof rawRes === 'string' ? JSON.parse(rawRes) : rawRes; } catch(e) { currentAttachments = []; }
+                        processed++;
+                        if(processed === files.length) { showActionLoader(false); renderPdfList(); Swal.fire({icon: 'success', title: 'อัปโหลดเสร็จสิ้น', timer: 1000, showConfirmButton: false}); }
+                    }).uploadAttachment(base64Data, file.name, currentRecordKey);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderPdfList() {
+            const listEl = document.getElementById('pdfFileList'); const msgEl = document.getElementById('noFilesMsg'); listEl.innerHTML = '';
+            if(currentAttachments.length === 0) { msgEl.classList.remove('hidden'); } else {
+                msgEl.classList.add('hidden');
+                currentAttachments.forEach((f, idx) => {
+                    listEl.innerHTML += `<li class="flex items-center justify-between p-3 border border-slate-200 rounded-xl bg-slate-50 hover:bg-white transition group"><div class="flex items-center gap-3 overflow-hidden"><div class="flex flex-col gap-1 cursor-ns-resize opacity-30 hover:opacity-100 transition"><button onclick="movePdf(${idx}, -1)" ${idx===0?'disabled class="invisible"':''}><i data-lucide="chevron-up" size="14"></i></button><button onclick="movePdf(${idx}, 1)" ${idx===currentAttachments.length-1?'disabled class="invisible"':''}><i data-lucide="chevron-down" size="14"></i></button></div><i data-lucide="file-text" class="text-rose-500 flex-shrink-0"></i><span class="text-sm font-bold text-slate-700 truncate" title="${f.name}">${f.name}</span></div><div class="flex gap-2 flex-shrink-0"><a href="${f.url}" target="_blank" class="p-1.5 text-secondary hover:bg-blue-50 rounded-lg transition" title="ดูไฟล์"><i data-lucide="external-link" size="16"></i></a><button onclick="deletePdf('${f.id}')" class="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="ลบไฟล์"><i data-lucide="trash-2" size="16"></i></button></div></li>`;
+                });
+            }
+            lucide.createIcons();
+        }
+
+        function movePdf(idx, dir) {
+            if(idx + dir < 0 || idx + dir >= currentAttachments.length) return;
+            const temp = currentAttachments[idx]; currentAttachments[idx] = currentAttachments[idx + dir]; currentAttachments[idx + dir] = temp;
+            renderPdfList(); google.script.run.reorderAttachments(currentRecordKey, currentAttachments);
+        }
+
+        function deletePdf(fileId) {
+            Swal.fire({ title: 'ลบไฟล์?', icon: 'warning', showCancelButton: true, confirmButtonText: 'ลบ' }).then((res) => {
+                if(res.isConfirmed) {
+                    showActionLoader(true);
+                    google.script.run.withSuccessHandler(rawRes => {
+                        showActionLoader(false); try { currentAttachments = typeof rawRes === 'string' ? JSON.parse(rawRes) : rawRes; } catch(e) { currentAttachments = []; } renderPdfList();
+                    }).deleteAttachment(fileId, currentRecordKey);
+                }
+            });
+        }
+
+        async function mergeAndPrintPDF() {
+            if(currentAttachments.length === 0) return Swal.fire('แจ้งเตือน', 'ไม่มีไฟล์ PDF ให้รวม', 'warning');
+            showActionLoader(true);
+            try {
+                const { PDFDocument } = PDFLib; const mergedPdf = await PDFDocument.create();
+                for(const file of currentAttachments) {
+                    const base64Data = await new Promise((resolve, reject) => { google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getPdfFileBase64(file.id); });
+                    const pdfBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)); const pdf = await PDFDocument.load(pdfBytes);
+                    const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices()); copiedPages.forEach((page) => mergedPdf.addPage(page));
+                }
+                const mergedPdfBytes = await mergedPdf.save(); const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' }); const url = URL.createObjectURL(blob);
+                showActionLoader(false); window.open(url, '_blank');
+            } catch (err) { showActionLoader(false); Swal.fire('Error', 'ไม่สามารถรวมไฟล์ได้: ' + err.message, 'error'); }
+        }
+
+        // --- SETTINGS ---
+        function populateSettings() {
+            const c = window.appData.configs || {};
+            if(document.getElementById('cfg-depts')) document.getElementById('cfg-depts').value = (c.departments || []).join('\n');
+            if(document.getElementById('cfg-funds')) document.getElementById('cfg-funds').value = (c.fund_types || []).join('\n');
+            if(document.getElementById('cfg-methods')) document.getElementById('cfg-methods').value = (c.pay_methods || []).join('\n');
+            if(document.getElementById('cfg-taxes')) document.getElementById('cfg-taxes').value = (c.tax_types || []).join('\n');
+            if(document.getElementById('cfg-ledger')) document.getElementById('cfg-ledger').value = c.ledger_sheet || "db_ledger";
+            if(document.getElementById('cfg-loan')) document.getElementById('cfg-loan').value = c.loan_sheet || "ทะเบียนคุมใบยืม";
+            if(document.getElementById('cfg-vat')) document.getElementById('cfg-vat').value = c.vat_rate || 7;
+            if(document.getElementById('cfg-wht')) document.getElementById('cfg-wht').value = c.wht_rate || 1;
+            if(document.getElementById('cfg-a1')) document.getElementById('cfg-a1').value = c.alert_1 || 5;
+            if(document.getElementById('cfg-a2')) document.getElementById('cfg-a2').value = c.alert_2 || 3;
+            if(document.getElementById('cfg-a3')) document.getElementById('cfg-a3').value = c.alert_3 || 1;
+            if(document.getElementById('cfg-domain')) document.getElementById('cfg-domain').value = c.org_domain || "@office.go.th";
+
+            let dashPrefs = { pie: true, bar: true, line: true, doughnut: true };
+            try { if(c.dash_prefs) dashPrefs = JSON.parse(c.dash_prefs); } catch(e){}
+            if(document.getElementById('cfg-dash-pie')) document.getElementById('cfg-dash-pie').checked = dashPrefs.pie;
+            if(document.getElementById('cfg-dash-bar')) document.getElementById('cfg-dash-bar').checked = dashPrefs.bar;
+            if(document.getElementById('cfg-dash-line')) document.getElementById('cfg-dash-line').checked = dashPrefs.line;
+            if(document.getElementById('cfg-dash-doughnut')) document.getElementById('cfg-dash-doughnut').checked = dashPrefs.doughnut;
+
+            updateRoleDatalist();
+            window.localUsers = ((window.appData.tables || {}).users || []).slice(1).map(u => ({ email: u[0], name: u[1], role: u[2], status: u[3] }));
+            renderUsersTable(); renderRoleManager();
+        }
+
+        // --- Role & Users Logic ---
+        function renderRoleManager() {
+            const tb = document.getElementById('role-manager-rows'); if(!tb) return;
+            tb.innerHTML = '';
+            Object.keys(window.rolePermsMap).forEach(roleName => {
+                if(roleName === 'Admin') return; 
+                const p = window.rolePermsMap[roleName]; const isUser = roleName === 'User'; 
+                let chk = (perm) => `<input type="checkbox" class="w-4 h-4 accent-secondary cursor-pointer" onchange="updateRolePerm('${roleName}', '${perm}', this.checked)" ${p[perm] ? 'checked' : ''}>`;
+                tb.innerHTML += `<tr>
+                        <td class="p-2.5 font-bold text-slate-700">${roleName} ${isUser?'<span class="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded ml-1">ค่าเริ่มต้น</span>':''}</td>
+                        <td class="p-2.5 text-center">${chk('view')}</td><td class="p-2.5 text-center">${chk('add')}</td><td class="p-2.5 text-center">${chk('edit')}</td><td class="p-2.5 text-center">${chk('del')}</td>
+                        <td class="p-2.5 text-center">${isUser ? '-' : `<button onclick="deleteRole('${roleName}')" class="text-red-400 hover:text-red-600"><i data-lucide="trash" size="16"></i></button>`}</td>
+                    </tr>`;
+            });
+            lucide.createIcons();
+        }
+
+        function updateRolePerm(roleName, perm, isChecked) {
+            if(!window.rolePermsMap[roleName]) return;
+            window.rolePermsMap[roleName][perm] = isChecked; renderUsersTable(); 
+        }
+
+        function addNewRole() {
+            const newRole = document.getElementById('new-role-name').value.trim();
+            if(!newRole) return Swal.fire('แจ้งเตือน', 'กรุณาพิมพ์ชื่อ Role', 'warning');
+            if(window.rolePermsMap[newRole] || newRole === 'Admin' || newRole === 'Banned') return Swal.fire('แจ้งเตือน', 'ชื่อ Role นี้มีอยู่แล้ว', 'warning');
+            window.rolePermsMap[newRole] = { view: true, add: false, edit: false, del: false };
+            document.getElementById('new-role-name').value = ''; renderRoleManager(); updateRoleDatalist();
+        }
+
+        function deleteRole(roleName) {
+            Swal.fire({title: `ลบ Role: ${roleName}?`, text: "ผู้ใช้ที่อยู่ใน Role นี้จะถูกเปลี่ยนเป็นสิทธิ์ 'User' แทน", icon: 'warning', showCancelButton: true, confirmButtonText: 'ลบ'}).then(res => {
+                if(res.isConfirmed) {
+                    delete window.rolePermsMap[roleName];
+                    window.localUsers.forEach(u => { if(u.role === roleName) u.role = 'User'; });
+                    renderRoleManager(); renderUsersTable(); updateRoleDatalist();
+                }
+            });
+        }
+
+        function renderUsersTable() {
+            const tb = document.getElementById('user-rows'); if(!tb) return;
+            tb.innerHTML = '';
+            window.localUsers.forEach((u, i) => {
+                let perm = window.rolePermsMap[u.role] || {view:false, add:false, edit:false, del:false};
+                if(u.role === 'Admin') perm = {view:true, add:true, edit:true, del:true};
+                let chk = (p, dis) => `<input type="checkbox" id="up-${i}-${p}" ${perm[p]?'checked':''} disabled class="w-4 h-4 bg-slate-100">`; let dis = true; 
+                tb.innerHTML += `<tr>
+                        <td class="p-3 font-bold text-slate-700">${u.email}</td>
+                        <td class="p-3"><input type="text" id="un-${i}" value="${u.name}" class="w-full p-2 border border-slate-200 rounded-lg text-xs focus:border-primary outline-none" onchange="window.localUsers[${i}].name=this.value"></td>
+                        <td class="p-3"><input type="text" list="dl-roles" id="ur-${i}" value="${u.role}" class="w-full p-2 border border-slate-200 rounded-lg text-xs font-bold bg-white text-slate-700 focus:border-primary outline-none" onchange="window.localUsers[${i}].role=this.value; renderUsersTable();"></td>
+                        <td class="p-3 text-center">${chk('view', dis)}</td><td class="p-3 text-center">${chk('add', dis)}</td><td class="p-3 text-center">${chk('edit', dis)}</td><td class="p-3 text-center">${chk('del', dis)}</td>
+                        <td class="p-3 text-center"><select id="us-${i}" class="w-full p-2 border border-slate-200 rounded-lg text-xs font-bold outline-none" onchange="window.localUsers[${i}].status=this.value"><option value="Active" ${u.status==='Active'?'selected':''}>Active</option><option value="Inactive" ${u.status==='Inactive'?'selected':''}>Inactive</option></select></td>
+                        <td class="p-3 text-center"><button onclick="removeUserRow(${i})" class="text-red-500 hover:text-red-700"><i data-lucide="trash-2" size="16"></i></button></td>
+                    </tr>`;
+            });
+            lucide.createIcons();
+        }
+
+        function saveUsersData() {
+            let finalUsers = window.localUsers.map((u, i) => { return { email: u.email, name: document.getElementById(`un-${i}`).value, role: document.getElementById(`ur-${i}`).value, status: document.getElementById(`us-${i}`).value }; });
+            finalUsers.forEach(u => { if(u.role !== 'Admin' && u.role !== 'Banned' && !window.rolePermsMap[u.role]) { window.rolePermsMap[u.role] = {view: true, add: false, edit: false, del: false}; } });
+            const domainStr = document.getElementById('cfg-domain').value;
+            showActionLoader(true);
+            google.script.run.withSuccessHandler(rawRes => {
+                handleGASResponse(rawRes, (data) => {
+                    window.appData = Object.assign({ auth: {}, configs: {}, tables: {}, stats: {} }, data); 
+                    initApp(); showActionLoader(false); Swal.fire({icon:'success', title:'บันทึกสิทธิ์สำเร็จ', timer:1500, showConfirmButton:false});
+                });
+            }).saveUsersAndRoleConfig(finalUsers, JSON.stringify(window.rolePermsMap), domainStr);
+        }
+
+        function addUserRow() {
+            const em = document.getElementById('new-u-email').value.trim(); const nm = document.getElementById('new-u-name').value.trim(); const rl = document.getElementById('new-u-role').value || 'User';
+            if(!em) return Swal.fire('แจ้งเตือน', 'กรุณากรอกอีเมล', 'warning');
+            if(window.localUsers.find(u => u.email.toLowerCase() === em.toLowerCase())) return Swal.fire('แจ้งเตือน', 'อีเมลนี้มีในระบบแล้ว', 'warning');
+            window.localUsers.push({ email: em, name: nm || em.split('@')[0], role: rl, status: 'Active' });
+            document.getElementById('new-u-email').value = ''; document.getElementById('new-u-name').value = ''; renderUsersTable();
+        }
+
+        function removeUserRow(idx) { window.localUsers.splice(idx, 1); renderUsersTable(); }
+
+        function saveConfigData() {
+            const getLines = (id) => { const el = document.getElementById(id); return el ? el.value.split('\n').map(x=>x.trim()).filter(x=>x) : []; };
+            const dashPrefs = {
+                pie: document.getElementById('cfg-dash-pie') ? document.getElementById('cfg-dash-pie').checked : true,
+                bar: document.getElementById('cfg-dash-bar') ? document.getElementById('cfg-dash-bar').checked : true,
+                line: document.getElementById('cfg-dash-line') ? document.getElementById('cfg-dash-line').checked : true,
+                doughnut: document.getElementById('cfg-dash-doughnut') ? document.getElementById('cfg-dash-doughnut').checked : true
+            };
+            const c = {
+                ledger_sheet: v('cfg-ledger'), loan_sheet: v('cfg-loan'), vat_rate: v('cfg-vat'), wht_rate: v('cfg-wht'),
+                alert_1: v('cfg-a1'), alert_2: v('cfg-a2'), alert_3: v('cfg-a3'), dash_prefs: JSON.stringify(dashPrefs),
+                departments: getLines('cfg-depts'), fund_types: getLines('cfg-funds'), pay_methods: getLines('cfg-methods'), tax_types: getLines('cfg-taxes')
+            };
+            showActionLoader(true);
+            google.script.run.withSuccessHandler(rawRes => {
+                handleGASResponse(rawRes, (data) => {
+                    window.appData = Object.assign({ auth: {}, configs: {}, tables: {}, stats: {} }, data); initApp(); showActionLoader(false); Swal.fire({icon:'success', title:'บันทึกสำเร็จ', timer:1500, showConfirmButton:false});
+                });
+            }).saveConfigs(c);
+        }
+
+        // --- DASHBOARD CHARTS ---
+        function updateStats() {
+            const s = window.appData.stats || {};
+            if(document.getElementById('d-ledger')) document.getElementById('d-ledger').innerText = s.ledgerCount || 0;
+            if(document.getElementById('d-loans')) document.getElementById('d-loans').innerText = s.loanCount || 0;
+            if(document.getElementById('d-ext')) document.getElementById('d-ext').innerText = s.extCount || 0;
+            if(typeof renderCharts === 'function') renderCharts();
+        }
+
+        function renderCharts() {
+            const s = window.appData.stats || {}; const t = window.appData.tables || {}; const c = window.appData.configs || {};
+            let dashPrefs = { pie: true, bar: true, line: true, doughnut: true };
+            try { if(c.dash_prefs) dashPrefs = JSON.parse(c.dash_prefs); } catch(e){}
+
+            if(document.getElementById('cont-chartPie')) document.getElementById('cont-chartPie').style.display = dashPrefs.pie ? 'block' : 'none';
+            if(document.getElementById('cont-chartBar')) document.getElementById('cont-chartBar').style.display = dashPrefs.bar ? 'block' : 'none';
+            if(document.getElementById('cont-chartLine')) document.getElementById('cont-chartLine').style.display = dashPrefs.line ? 'block' : 'none';
+            if(document.getElementById('cont-chartDoughnut')) document.getElementById('cont-chartDoughnut').style.display = dashPrefs.doughnut ? 'block' : 'none';
+
+            if(dashPrefs.pie && document.getElementById('chartPie')) {
+                if(myPieChart) myPieChart.destroy();
+                myPieChart = new Chart(document.getElementById('chartPie'), { type: 'doughnut', data: { labels: ['ใบคุมบัญชี', 'ใบยืมเงิน', 'เงินนอกงบประมาณ'], datasets: [{ data: [s.ledgerCount || 0, s.loanCount || 0, s.extCount || 0], backgroundColor: ['#ED7D31', '#5B9BD5', '#FFC000'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } });
+            }
+
+            if(dashPrefs.bar && document.getElementById('chartBar')) {
+                const loans = t['loans'] || []; let paid = 0, unpaid = 0;
+                if(loans.length > 1) { loans.slice(1).forEach(r => { if(r[22] === 'ล้างหนี้แล้ว') paid++; else unpaid++; }); }
+                if(myBarChart) myBarChart.destroy();
+                myBarChart = new Chart(document.getElementById('chartBar'), { type: 'bar', data: { labels: ['ล้างหนี้แล้ว', 'ค้างชำระ'], datasets: [{ label: 'จำนวนใบยืม', data: [paid, unpaid], backgroundColor: ['#10b981', '#f43f5e'], borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks:{stepSize:1} } } } });
+            }
+
+            if(dashPrefs.line && document.getElementById('chartLine')) {
+                const ledger = t['ledger'] || []; let monthlyData = {};
+                if(ledger.length > 1) { ledger.slice(1).forEach(r => { let dateStr = r[3]; let amt = parseFloat(r[11]) || 0; if(dateStr && typeof dateStr === 'string' && dateStr.includes('-')) { let month = dateStr.substring(0, 7); monthlyData[month] = (monthlyData[month] || 0) + amt; } }); }
+                const sortedMonths = Object.keys(monthlyData).sort(); const lineValues = sortedMonths.map(m => monthlyData[m]); const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+                const labelsLine = sortedMonths.map(m => { let pts = m.split('-'); return `${thaiMonths[parseInt(pts[1])-1]} ${(parseInt(pts[0])+543).toString().substring(2)}`; });
+
+                if(myLineChart) myLineChart.destroy();
+                myLineChart = new Chart(document.getElementById('chartLine'), { type: 'line', data: { labels: labelsLine.length ? labelsLine : ['ไม่มีข้อมูล'], datasets: [{ label: 'ยอดเบิกจ่าย (บาท)', data: lineValues.length ? lineValues : [0], borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: true, tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+            }
+
+            if(dashPrefs.doughnut && document.getElementById('chartDoughnut')) {
+                const ledger = t['ledger'] || []; let fundData = {};
+                if(ledger.length > 1) { ledger.slice(1).forEach(r => { let fund = r[13] || 'ไม่ระบุ'; let amt = parseFloat(r[11]) || 0; fundData[fund] = (fundData[fund] || 0) + amt; }); }
+                const fundLabels = Object.keys(fundData); const fundValues = fundLabels.map(f => fundData[f]); const colors = ['#ED7D31', '#5B9BD5', '#FFC000', '#10b981', '#f43f5e', '#8b5cf6', '#3b82f6'];
+
+                if(myDoughnutChart) myDoughnutChart.destroy();
+                myDoughnutChart = new Chart(document.getElementById('chartDoughnut'), { type: 'doughnut', data: { labels: fundLabels.length ? fundLabels : ['ไม่มีข้อมูล'], datasets: [{ data: fundValues.length ? fundValues : [1], backgroundColor: colors }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } } });
+            }
+        }
+
+        function showLoader(show) {
+            const loader = document.getElementById('globalLoader'); const content = document.getElementById('appContent');
+            if(loader) loader.classList.toggle('hidden', !show); if(content) content.classList.toggle('hidden', show);
+        }
+
+        function showActionLoader(show) {
+            const overlay = document.getElementById('loadingOverlay');
+            if(overlay) overlay.classList.toggle('hidden', !show);
+        }
+  </script>
+</body>
+
+</html>
