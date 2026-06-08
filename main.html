@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>หน้าหลัก - ระบบจัดการแบบครบวงจร</title>
+    
+    <?!= include('Common_CSS'); ?>
+    <style>
+        body { background-color: #f8fafc; }
+        .welcome-section {
+            background: linear-gradient(135deg, #ffffff 0%, #fef3c7 100%);
+            border-left: 5px solid var(--primary-orange);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .stat-card {
+            border: none;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            background: #ffffff;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            height: 100%;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(249, 115, 22, 0.15);
+        }
+        .stat-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .stat-value {
+            font-size: 2.25rem;
+            color: var(--primary-orange);
+            font-weight: 800;
+            line-height: 1;
+        }
+        .stat-label {
+            color: #64748b;
+            font-weight: 500;
+            margin-top: 5px;
+            font-size: 0.9rem;
+        }
+        
+        /* สไตล์สำหรับปุ่มเมนูหลัก (มาตรฐานเดียวกันทุกปุ่ม) */
+        .menu-btn {
+            background: #ffffff;
+            border: 2px solid transparent; /* กำหนดขอบใสไว้ก่อนเพื่อไม่ให้ปุ่มขยับตอน Hover */
+            border-radius: 20px;
+            padding: 2rem 1.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-decoration: none;
+            color: #334155;
+            cursor: pointer;
+        }
+        .menu-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(249, 115, 22, 0.15);
+            border-color: var(--primary-orange);
+            color: var(--primary-orange);
+        }
+        .menu-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            transition: transform 0.3s ease;
+        }
+        .menu-btn:hover .menu-icon {
+            transform: scale(1.1);
+        }
+        .menu-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        .menu-icon img {
+            width: 160px;       /* ปรับขนาดความกว้างของรูปได้ตามต้องการ */
+            height: 160px;      /* ปรับขนาดความสูงของรูปได้ตามต้องการ */
+            object-fit: contain; /* ป้องกันรูปยืดหรือเบี้ยว */
+            transition: transform 0.3s ease;
+        }
+        .menu-btn:hover .menu-icon img {
+            transform: scale(1.15);
+        }
+        .menu-icon {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="pageLoader" class="loader-container">
+        <div class="spinner"></div>
+        <div class="mt-3 fw-bold text-secondary">
+            <div class="loader-message">กำลังโหลดข้อมูลระบบ...</div>
+        </div>
+    </div>
+
+    <?!= include('Common_Navbar'); ?>
+
+    <div class="container pb-5">
+        
+        <div class="welcome-section mt-4">
+            <h2 class="fw-bold mb-1" style="color: #334155;">สวัสดี 👋</h2>
+            <p class="text-muted mb-0">ยินดีต้อนรับเข้าสู่ระบบจัดการแบบครบวงจร (Integrated Management)</p>
+        </div>
+
+        <div class="row g-4 mb-5" id="dashboardKPI" style="display: none;">
+            <div class="col-md-6 col-lg-3">
+                <div class="card stat-card">
+                    <div class="card-body text-center p-4">
+                        <span class="stat-icon">🚐</span>
+                        <div class="stat-value" id="stat-van">-</div>
+                        <div class="stat-label">รถตู้ว่างพร้อมใช้งาน</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card stat-card">
+                    <div class="card-body text-center p-4">
+                        <span class="stat-icon">🔧</span>
+                        <div class="stat-value" id="stat-repair">-</div>
+                        <div class="stat-label">งานซ่อมบำรุงที่ค้างอยู่</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card stat-card">
+                    <div class="card-body text-center p-4">
+                        <span class="stat-icon">📄</span>
+                        <div class="stat-value" id="stat-claims">-</div>
+                        <div class="stat-label">รายการรออนุมัติ</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card stat-card">
+                    <div class="card-body text-center p-4">
+                        <span class="stat-icon">📦</span>
+                        <div class="stat-value" id="stat-inventory">-</div>
+                        <div class="stat-label">วัสดุที่ต้องเติมสต็อก</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h4 class="fw-bold mb-4" style="color: #334155;">📌 เมนูระบบงาน</h4>
+        <div class="row g-4">
+            
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="menu-btn" onclick="navigateTo('van_admin_summary')">
+                    <div class="menu-icon">🚐</div>
+                    <div class="menu-title">ระบบจองรถตู้</div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="menu-btn" onclick="navigateTo('van_driver')">
+                    <div class="menu-icon">👨‍✈️</div>
+                    <div class="menu-title">ระบบพนักงานขับรถ</div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="menu-btn" onclick="navigateTo('pm_dashboard')">
+                    <div class="menu-icon">⚙️</div>
+                    <div class="menu-title">ระบบวิศวกรรมอาคาร</div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="menu-btn" onclick="navigateTo('dashboard')">
+                    <div class="menu-icon">📑</div>
+                    <div class="menu-title">ระบบเบิกจ่ายค่าใช้จ่ายการเดินทาง</div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="menu-btn" onclick="navigateTo('finace_dashboard')">
+                    <div class="menu-icon">📊</div>
+                    <div class="menu-title">ระบบการเงิน (Finance)</div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="menu-btn" onclick="navigateTo('accounting_dashboard')">
+                    <div class="menu-icon">📊</div>
+                    <div class="menu-title">ระบบบัญชีและการเงิน</div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="menu-btn" onclick="navigateTo('infirmary_dashboard')">
+                    <div class="menu-icon">🏥</div>
+                    <div class="menu-title">ระบบห้องพยาบาล</div>
+                </div>
+            </div>
+
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="menu-btn" onclick="navigateTo('durable_dashboard')">
+                    <div class="menu-icon">📦</div>
+                    <div class="menu-title">ระบบวัสดุ/ครุภัณฑ์</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <?!= include('Common_JS'); ?>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardKPI();
+        });
+
+        function loadDashboardKPI() {
+            try {
+                google.script.run
+                    .withSuccessHandler(function(data) {
+                        const available = data.filter(v => v.status === 'ว่าง').length;
+                        document.getElementById('stat-van').textContent = available;
+                    })
+                    .getVanStatus();
+
+                google.script.run
+                    .withSuccessHandler(function(jobs) {
+                        const pendingCount = jobs.filter(j => j.status !== 'Completed').length;
+                        document.getElementById('stat-repair').textContent = pendingCount;
+                    })
+                    .getPMSchedule();
+
+                google.script.run
+                    .withSuccessHandler(function(pending) {
+                        document.getElementById('stat-claims').textContent = pending.length || 0;
+                    })
+                    .getPendingClaims();
+
+                google.script.run
+                    .withSuccessHandler(function(summary) {
+                        if (summary && summary.lowStockItems) {
+                            document.getElementById('stat-inventory').textContent = summary.lowStockItems.length || 0;
+                        }
+                    })
+                    .getDashboardSummary();
+
+                document.getElementById('dashboardKPI').style.display = 'flex';
+                hideLoader();
+
+            } catch (error) {
+                console.error('Dashboard KPI Error:', error);
+                hideLoader();
+            }
+        }
+    </script>
+</body>
+</html>
