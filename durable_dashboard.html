@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard จัดการวัสดุและครุภัณฑ์</title>
+    
+    <!-- เรียกใช้ไฟล์ Common_CSS -->
+    <?!= include('Common_CSS'); ?>
+    
+    <!-- ป้องกันปัญหา Chart is not defined เวลา Preview -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <style>
+        /* =================================================================
+           CSS ของเดิมทั้งหมด
+           ================================================================= */
+        body { overflow-x: hidden; background-color: #f8fafc; }
+        #sidebar {
+            min-width: 240px; max-width: 240px; min-height: 100vh;
+            background-color: #1e293b; color: #fff;
+            transition: all .3s ease; flex-shrink: 0;
+            position: relative;
+        }
+        #sidebar.collapsed { margin-left: -240px; }
+        .sidebar-logo { padding: 1.25rem 1rem; border-bottom: 1px solid rgba(255,255,255,.1); text-align: center; }
+        .sidebar-logo h5 { color: #f97316; font-weight: 700; margin: 0; }
+        .sidebar-logo small { color: #94a3b8; font-size: .75rem; }
+        #sidebar .nav-link {
+            color: rgba(255,255,255,.75); padding: 10px 16px; border-radius: 8px;
+            margin-bottom: 2px; font-size: .875rem; transition: all .2s;
+            display: flex; align-items: center; gap: 8px;
+            text-decoration: none;
+        }
+        #sidebar .nav-link:hover, #sidebar .nav-link.active {
+            background: rgba(249,115,22,.2); color: #f97316;
+        }
+        .sidebar-section-label {
+            font-size: .68rem; text-transform: uppercase; letter-spacing: .07em;
+            color: #64748b; font-weight: 700; padding: 14px 16px 6px;
+        }
+        #main-content { width: 100%; min-width: 0; }
+        #sidebarToggle {
+            background: white; border: 1px solid #e2e8f0; border-radius: 10px;
+            width: 36px; height: 36px; display: flex; align-items: center;
+            justify-content: center; cursor: pointer; transition: all .2s; color: #1e293b;
+        }
+        #sidebarToggle:hover { background: #f8fafc; }
+        
+        .kpi-card {
+            border-radius: 1.25rem; border: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,.03);
+            transition: transform .2s; padding: 1.25rem; background: white;
+            height: 100%;
+        }
+        .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,.05); }
+        .kpi-card .kpi-icon { font-size: 2.2rem; opacity: .2; transition: opacity .3s; }
+        .kpi-card:hover .kpi-icon { opacity: .5; }
+        .kpi-card .card-label { font-size: .85rem; color: #64748b; font-weight: 600; }
+        .kpi-card .kpi-value { font-size: 2.2rem; font-weight: 700; color: #1e293b; line-height: 1.1; margin-top: 5px; }
+        
+        .kpi-card.border-success { border-left: 5px solid #10b981 !important; }
+        .kpi-card.border-info    { border-left: 5px solid #0ea5e9 !important; }
+        .kpi-card.border-danger  { border-left: 5px solid #ef4444 !important; }
+        .kpi-card.border-warning { border-left: 5px solid #f59e0b !important; }
+        
+        .chart-card {
+            background: white; border-radius: 1.25rem; padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,.03); border: 1px solid #f1f5f9;
+            height: 100%;
+        }
+        .chart-card-title {
+            font-weight: 700; color: #1e293b; margin-bottom: 1.2rem;
+            font-size: 1rem; border-bottom: 2px solid #f1f5f9; padding-bottom: .8rem;
+        }
+        .chart-container { position: relative; height: 280px; width: 100%; }
+
+        /* =================================================================
+           CSS รองรับการใช้งานบนมือถือ (Overlay และปุ่มปิด)
+           ================================================================= */
+        #sidebarOverlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1040;
+            backdrop-filter: blur(2px);
+        }
+        #sidebarOverlay.active { display: block; }
+        .sidebar-close-btn {
+            display: none;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.5rem;
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            cursor: pointer;
+            z-index: 1051;
+        }
+        .sidebar-close-btn:hover { color: #fff; }
+
+        @media (max-width: 768px) {
+            #sidebar { position: fixed; z-index: 1050; margin-left: -240px; }
+            #sidebar.active { margin-left: 0; }
+            .sidebar-close-btn { display: block; } 
+        }
+
+        /* =================================================================
+           CSS ระบบ Loader
+           ================================================================= */
+        .loader-container {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: rgba(255, 255, 255, 0.9);
+            z-index: 9999; display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+        .spinner {
+            width: 60px; height: 60px; border: 6px solid #f3f3f3;
+            border-top: 6px solid #f97316; border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loader-hidden { opacity: 0; visibility: hidden; }
+    </style>
+</head>
+<body>
+
+    <div id="pageLoader" class="loader-container">
+        <div class="spinner"></div>
+        <div class="mt-3 fw-bold text-secondary" id="loaderText">กำลังโหลดข้อมูล...</div>
+    </div>
+
+    <div id="sidebarOverlay"></div>
+
+    <div class="d-flex align-items-stretch" style="min-height: 100vh;">
+        
+        <nav id="sidebar">
+            <button id="sidebarClose" class="sidebar-close-btn"><i class="fas fa-times"></i></button>
+
+            <div class="sidebar-logo">
+                <h5><i class="fas fa-boxes me-2"></i>Inventory</h5>
+                <small>Management System</small>
+            </div>
+            <div class="p-2">
+                <ul class="nav flex-column" id="menu-group-dashboard">
+                    <li><a class="nav-link active" href="javascript:void(0);" onclick="navigateTo('durable_dashboard')"><i class="fas fa-chart-pie"></i> แดชบอร์ด</a></li>
+                </ul>
+                
+                <div class="sidebar-section-label" id="label-admin">ผู้ดูแลระบบ</div>
+                <ul class="nav flex-column" id="menu-group-admin">
+                    <li id="menu-user-management"><a class="nav-link" href="javascript:void(0);" onclick="navigateTo('durable_user_management')"><i class="fas fa-users-cog"></i> ระบบจัดการสมาชิก</a></li>
+                    <li id="menu-add-member"><a class="nav-link" href="javascript:void(0);" onclick="navigateTo('durable_add_member')"><i class="fas fa-user-plus"></i> เพิ่มสมาชิก</a></li>
+                </ul>
+
+                <div class="sidebar-section-label" id="label-stock">การจัดการสต๊อก</div>
+                <ul class="nav flex-column" id="menu-group-stock">
+                    <li><a class="nav-link" href="javascript:void(0);" onclick="navigateTo('durable_item')"><i class="fas fa-box-open"></i> เพิ่มวัสดุ</a></li>
+                    <li><a class="nav-link" href="javascript:void(0);" onclick="navigateTo('durable_add_equipment')"><i class="fas fa-laptop"></i> เพิ่มครุภัณฑ์</a></li>
+                    <li><a class="nav-link" href="javascript:void(0);" onclick="navigateTo('durable_equipment_management')"><i class="fas fa-box"></i> ระบบจัดการวัสดุและครุภัณฑ์</a></li>
+                </ul>
+
+                <div class="sidebar-section-label" id="label-borrow">ระบบเบิก/ยืม</div>
+                <ul class="nav flex-column" id="menu-group-borrow">
+                    <li><a class="nav-link" href="javascript:void(0);" onclick="navigateTo('borrow_system')"><i class="fas fa-hand-holding"></i> ระบบขอยืม</a></li>
+                    <li><a class="nav-link" href="javascript:void(0);" onclick="navigateTo('return_system')"><i class="fas fa-undo-alt"></i> ระบบคืน</a></li>
+                    <li><a class="nav-link" href="javascript:void(0);" onclick="navigateTo('durable_claims')"><i class="fas fa-box"></i> เบิกวัสดุ</a></li>
+                    <li><a class="nav-link" href="javascript:void(0);" onclick="navigateTo('durable_bulk_claim')"><i class="fas fa-laptop"></i> เบิกครุภัณฑ์</a></li>
+                </ul>
+
+                <div class="sidebar-section-label" id="label-repair">แจ้งซ่อม</div>
+                <ul class="nav flex-column" id="menu-group-repair">
+                    <li><a class="nav-link" href="javascript:void(0);" onclick="navigateTo('repair-form')"><i class="fas fa-wrench"></i> แจ้งซ่อมพัสดุ</a></li>
+                    <li id="menu-repair-staff"><a class="nav-link" href="javascript:void(0);" onclick="navigateTo('repair-form-staff')"><i class="fas fa-tools"></i> บันทึกงานพัสดุ</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <div id="main-content">
+            
+            <?!= include('Common_Navbar'); ?>
+
+            <div class="container-fluid p-4">
+                
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="fw-bold mb-0 text-dark">Dashboard สรุปข้อมูลพัสดุ</h4>
+                    <button id="sidebarToggle" class="d-md-none">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+
+                <div id="user-welcome-message" style="display: none;" class="text-center mt-5 pt-5">
+                    <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
+                    <h4 class="fw-bold text-dark">ยินดีต้อนรับสู่ระบบจัดการวัสดุและครุภัณฑ์</h4>
+                    <p class="text-muted">โปรดเลือกทำรายการจากเมนูด้านซ้ายมือ</p>
+                </div>
+
+                <div id="dashboard-content">
+                    
+                    <!-- ส่วน Header ตัวกรองข้อมูล -->
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-3 bg-white p-3 rounded-4 shadow-sm border border-light">
+                        <div class="mb-3 mb-md-0">
+                            <h5 class="fw-bold text-secondary mb-0"><i class="fas fa-chart-line me-2 text-primary"></i>ภาพรวมระบบ (แสดงมูลค่าสุทธิ)</h5>
+                            <small class="text-muted">เลือกดูข้อมูลย้อนหลังตามระยะเวลา หรือแยกประเภทวัสดุ/ครุภัณฑ์ได้</small>
+                        </div>
+                        <div class="d-flex flex-column flex-sm-row gap-2">
+                            <!-- ตัวกรองเวลา -->
+                            <select id="timeFilter" class="form-select form-select-sm border-secondary text-secondary fw-bold bg-light" onchange="loadDashboard()">
+                                <option value="all" selected>📅 ทุกช่วงเวลา (ทั้งหมด)</option>
+                                <option value="week">📅 7 วันที่ผ่านมา</option>
+                                <option value="month">📅 1 เดือนที่ผ่านมา</option>
+                                <option value="3months">📅 3 เดือนที่ผ่านมา</option>
+                                <option value="6months">📅 ครึ่งปีที่ผ่านมา (6 เดือน)</option>
+                                <option value="year">📅 1 ปีที่ผ่านมา</option>
+                            </select>
+                            
+                            <!-- ตัวกรองประเภท -->
+                            <select id="dataFilter" class="form-select form-select-sm border-primary text-primary fw-bold bg-light" onchange="applyDataFilter(this.value)">
+                                <option value="all">📊 แสดงทั้งหมด (ครุภัณฑ์ + วัสดุ)</option>
+                                <option value="eq">💻 แสดงเฉพาะ "ครุภัณฑ์"</option>
+                                <option value="mat">📦 แสดงเฉพาะ "วัสดุ"</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 4 KPI Cards -->
+                    <div class="row g-4 mb-4">
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="kpi-card border-info d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="card-label">จำนวนรายการรับเข้า</div>
+                                    <div class="kpi-value text-info" id="stat-total-items">0</div>
+                                    <div class="mt-1" id="sub-items-breakdown" style="font-size: 0.75rem; color: #64748b;">
+                                        ครุภัณฑ์ <span id="stat-items-eq" class="fw-bold text-dark">0</span> | วัสดุ <span id="stat-items-mat" class="fw-bold text-dark">0</span>
+                                    </div>
+                                </div>
+                                <div class="kpi-icon text-info"><i class="fas fa-boxes"></i></div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="kpi-card border-success d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="card-label">จำนวนชิ้นรวม</div>
+                                    <div class="kpi-value text-success" id="stat-total-qty">0</div>
+                                    <div class="mt-1" id="sub-qty-breakdown" style="font-size: 0.75rem; color: #64748b;">
+                                        ครุภัณฑ์ <span id="stat-qty-eq" class="fw-bold text-dark">0</span> | วัสดุ <span id="stat-qty-mat" class="fw-bold text-dark">0</span>
+                                    </div>
+                                </div>
+                                <div class="kpi-icon text-success"><i class="fas fa-layer-group"></i></div>
+                            </div>
+                        </div>
+                        
+                        <!-- ปรับมาแสดงมูลค่าสุทธิแทน -->
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="kpi-card border-warning d-flex justify-content-between align-items-center" style="background-color: #fffbeb;">
+                                <div>
+                                    <div class="card-label">มูลค่าสุทธิปัจจุบัน (บาท)</div>
+                                    <div class="kpi-value text-warning" id="stat-total-net-value">0</div>
+                                    <div class="mt-1" id="sub-val-breakdown" style="font-size: 0.75rem; color: #64748b;">
+                                        ราคาทุนรวม: <span id="stat-total-value" class="fw-bold text-dark">0</span> ฿
+                                    </div>
+                                </div>
+                                <div class="kpi-icon text-warning"><i class="fas fa-coins"></i></div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="kpi-card border-danger d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="card-label">วัสดุใกล้หมดสต๊อก</div>
+                                    <div class="kpi-value text-danger" id="stat-low-stock-count">0</div>
+                                    <div class="mt-1" style="font-size: 0.75rem; color: #ef4444;">
+                                        *เหลือน้อยกว่าหรือเท่ากับ 5 ชิ้น
+                                    </div>
+                                </div>
+                                <div class="kpi-icon text-danger"><i class="fas fa-exclamation-triangle"></i></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Section -->
+                    <div class="row g-4 mb-5">
+                        <div class="col-lg-8">
+                            <div class="chart-card">
+                                <div class="chart-card-title d-flex justify-content-between">
+                                    <span>กราฟแสดง "มูลค่าสุทธิ" แยกตามหมวดหมู่ (หลังหักค่าเสื่อมแล้ว)</span>
+                                    <span class="badge bg-light text-secondary border">หน่วย: บาท</span>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="expenseChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="chart-card">
+                                <div class="chart-card-title">สถานะภาพรวม <span class="text-muted fw-normal" style="font-size: 0.8rem;" id="statusChartTitle">(รวมทั้งหมด)</span></div>
+                                <div class="chart-container">
+                                    <canvas id="statusChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- เรียกใช้ไฟล์ Common_JS -->
+    <?!= include('Common_JS'); ?>
+    
+    <script>
+        window.isNavigating = false; 
+        window.dashboardStats = null; // เก็บข้อมูลทั้งหมดไว้ทำ Filter บนหน้าจอ
+
+        function showLoader(text) {
+            var loader = document.getElementById('pageLoader');
+            if (loader) {
+                if (text) document.getElementById('loaderText').textContent = text;
+                loader.classList.remove('loader-hidden');
+            }
+        }
+
+        function hideLoader() {
+            if (window.isNavigating) return; 
+
+            var loader = document.getElementById('pageLoader');
+            if (loader) loader.classList.add('loader-hidden');
+        }
+
+        function navigateTo(pageName) {
+            window.isNavigating = true; 
+            showLoader('กำลังโหลดข้อมูล...'); 
+
+            if (typeof google !== 'undefined' && google.script) {
+                google.script.run
+                    .withSuccessHandler(function(htmlContent) {
+                        document.open();
+                        document.write(htmlContent);
+                        document.close();
+                    })
+                    .withFailureHandler(function(error) {
+                        alert('ไม่สามารถโหลดหน้าเว็บได้: ' + error);
+                        window.isNavigating = false; 
+                        hideLoader();
+                    })
+                    .loadHtmlPage(pageName); 
+            } else {
+                console.log("Navigate to: " + pageName);
+                setTimeout(function() {
+                    window.isNavigating = false;
+                    hideLoader();
+                }, 1000); 
+            }
+        }
+
+        var sidebar = document.getElementById('sidebar');
+        var overlay = document.getElementById('sidebarOverlay');
+
+        document.getElementById('sidebarToggle').addEventListener('click', function() {
+            if (window.innerWidth <= 768) {
+                sidebar.classList.add('active');
+                if (overlay) overlay.classList.add('active');
+            } else {
+                sidebar.classList.toggle('collapsed');
+            }
+            setTimeout(function(){ window.dispatchEvent(new Event('resize')); }, 310);
+        });
+
+        function closeSidebarMobile() {
+            if (window.innerWidth <= 768) {
+                sidebar.classList.remove('active');
+                if (overlay) overlay.classList.remove('active');
+            }
+        }
+
+        document.getElementById('sidebarClose').addEventListener('click', closeSidebarMobile);
+        if (overlay) overlay.addEventListener('click', closeSidebarMobile);
+        document.querySelectorAll('#sidebar .nav-link').forEach(function(link) {
+            link.addEventListener('click', function() { closeSidebarMobile(); });
+        });
+
+        function applyRoleAccess(role) {
+            role = role ? role.toLowerCase() : 'user';
+            
+            var mDashboardGrp = document.getElementById('menu-group-dashboard');
+            var lAdmin = document.getElementById('label-admin');
+            var mUserMgmt = document.getElementById('menu-user-management');
+            var mAddMem = document.getElementById('menu-add-member');
+            var lStock = document.getElementById('label-stock');
+            var mStockGrp = document.getElementById('menu-group-stock');
+            var mRepairStaff = document.getElementById('menu-repair-staff');
+            
+            var dashboardContent = document.getElementById('dashboard-content');
+            var welcomeMsg = document.getElementById('user-welcome-message');
+
+            if(mDashboardGrp) mDashboardGrp.style.display = 'none';
+            if(lAdmin) lAdmin.style.display = 'none';
+            if(mUserMgmt) mUserMgmt.style.display = 'none';
+            if(mAddMem) mAddMem.style.display = 'none';
+            if(lStock) lStock.style.display = 'none';
+            if(mStockGrp) mStockGrp.style.display = 'none';
+            if(mRepairStaff) mRepairStaff.style.display = 'none';
+            if(dashboardContent) dashboardContent.style.display = 'none';
+            if(welcomeMsg) welcomeMsg.style.display = 'none';
+
+            if (role === 'admin' || role === 'assistant') {
+                if(mDashboardGrp) mDashboardGrp.style.display = 'block';
+                if(lAdmin) lAdmin.style.display = 'block';
+                if(mUserMgmt && role === 'admin') mUserMgmt.style.display = 'block'; 
+                if(mAddMem) mAddMem.style.display = 'block';
+                if(lStock) lStock.style.display = 'block';
+                if(mStockGrp) mStockGrp.style.display = 'block';
+                if(mRepairStaff) mRepairStaff.style.display = 'block';
+                if(dashboardContent) dashboardContent.style.display = 'block';
+            } else {
+                if(welcomeMsg) welcomeMsg.style.display = 'block';
+            }
+        }
+
+        function checkUserRoleAndApply() {
+            if (!window.isNavigating) showLoader('กำลังตรวจสอบสิทธิ์...');
+            
+            google.script.run
+                .withSuccessHandler(function(email) {
+                    google.script.run
+                        .withSuccessHandler(function(data) {
+                            var currentUserRole = "User";
+                            if (data && data.length > 1) {
+                                for (var i = 1; i < data.length; i++) {
+                                    if (data[i][0] && data[i][0].trim() === email) {
+                                        currentUserRole = data[i][4] ? data[i][4].trim() : "User";
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            applyRoleAccess(currentUserRole);
+                            
+                            if (currentUserRole.toLowerCase() !== 'user') {
+                                loadDashboard(); 
+                            } else {
+                                hideLoader();
+                            }
+                        })
+                        .withFailureHandler(function(error) {
+                            console.error('Error fetching roles:', error);
+                            applyRoleAccess('user');
+                            hideLoader();
+                        })
+                        .getUserRoleData();
+                })
+                .withFailureHandler(function() {
+                    applyRoleAccess('user');
+                    hideLoader();
+                })
+                .getCurrentUserEmail();
+        }
+
+        var expenseChartInst = null;
+        var statusChartInst  = null;
+
+        // ฟังก์ชันโหลดข้อมูลใหม่เมื่อเปลี่ยน Time Filter
+        function loadDashboard() {
+            var timeRange = document.getElementById('timeFilter').value;
+            showLoader('กำลังประมวลผลข้อมูลจากฐานข้อมูล...');
+            
+            google.script.run
+                .withSuccessHandler(function(stats) {
+                    hideLoader();
+                    if (!stats) return;
+
+                    window.dashboardStats = stats;
+                    var currentDataType = document.getElementById('dataFilter').value;
+                    applyDataFilter(currentDataType);
+                })
+                .withFailureHandler(function(err) {
+                    hideLoader();
+                    // แสดงแจ้งเตือนชัดเจนเมื่อดึงข้อมูลไม่สำเร็จ จะได้ทราบปัญหาทันที
+                    alert('เกิดข้อผิดพลาดในการโหลดข้อมูล: ' + err.message);
+                    console.error(err);
+                })
+                .getDashboardSummary(timeRange); // ส่งค่าตัวกรองเวลาไปที่สคริปต์
+        }
+
+        // ฟังก์ชัน Filter และอัปเดตตัวเลข บนหน้าจอ
+        function applyDataFilter(filterType) {
+            var stats = window.dashboardStats;
+            if (!stats) return;
+
+            var elItems = document.getElementById('stat-total-items');
+            var elQty   = document.getElementById('stat-total-qty');
+            var elNetVal = document.getElementById('stat-total-net-value');
+            var elVal   = document.getElementById('stat-total-value');
+            
+            var subItems = document.getElementById('sub-items-breakdown');
+            var subQty   = document.getElementById('sub-qty-breakdown');
+            var subVal   = document.getElementById('sub-val-breakdown');
+
+            if (filterType === 'all') {
+                elItems.textContent = (stats.totalItems || 0).toLocaleString();
+                elQty.textContent   = (stats.totalQty || 0).toLocaleString();
+                elNetVal.textContent = (stats.totalNetValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                elVal.textContent   = (stats.totalValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                
+                document.getElementById('stat-items-eq').textContent = (stats.totalItems_Eq || 0).toLocaleString();
+                document.getElementById('stat-items-mat').textContent = (stats.totalItems_Mat || 0).toLocaleString();
+                document.getElementById('stat-qty-eq').textContent = (stats.totalQty_Eq || 0).toLocaleString();
+                document.getElementById('stat-qty-mat').textContent = (stats.totalQty_Mat || 0).toLocaleString();
+                
+                subItems.style.display = 'block'; subQty.style.display = 'block'; subVal.style.display = 'block';
+                document.getElementById('statusChartTitle').textContent = "(รวมทั้งหมด)";
+            } 
+            else if (filterType === 'eq') {
+                elItems.textContent = (stats.totalItems_Eq || 0).toLocaleString();
+                elQty.textContent   = (stats.totalQty_Eq || 0).toLocaleString();
+                elNetVal.textContent = (stats.totalNetValue_Eq || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                elVal.textContent   = (stats.totalValue_Eq || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                subItems.style.display = 'none'; subQty.style.display = 'none'; subVal.style.display = 'block';
+                document.getElementById('statusChartTitle').textContent = "(เฉพาะครุภัณฑ์)";
+            } 
+            else if (filterType === 'mat') {
+                elItems.textContent = (stats.totalItems_Mat || 0).toLocaleString();
+                elQty.textContent   = (stats.totalQty_Mat || 0).toLocaleString();
+                elNetVal.textContent = (stats.totalNetValue_Mat || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                elVal.textContent   = (stats.totalValue_Mat || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                subItems.style.display = 'none'; subQty.style.display = 'none'; subVal.style.display = 'block';
+                document.getElementById('statusChartTitle').textContent = "(เฉพาะวัสดุ)";
+            }
+
+            document.getElementById('stat-low-stock-count').textContent = (stats.lowStockCount || 0).toLocaleString();
+
+            drawCharts(stats, filterType);
+        }
+
+        function drawCharts(stats, filterType) {
+            if (expenseChartInst) { expenseChartInst.destroy(); expenseChartInst = null; }
+            if (statusChartInst)  { statusChartInst.destroy();  statusChartInst  = null; }
+
+            var expData = (stats.expenseByDept) || { labels:['ไม่มีข้อมูล'], dataEq:[0], dataMat:[0] };
+            
+            var datasetsList = [];
+            if (filterType === 'all' || filterType === 'eq') {
+                datasetsList.push({
+                    label: 'ครุภัณฑ์ (มูลค่าสุทธิ)', 
+                    data: expData.dataEq,
+                    backgroundColor: 'rgba(56, 189, 248, 0.8)', 
+                    borderColor: 'rgba(14, 165, 233, 1)',
+                    borderWidth: 1, borderRadius: 4
+                });
+            }
+            if (filterType === 'all' || filterType === 'mat') {
+                datasetsList.push({
+                    label: 'วัสดุ (มูลค่าสุทธิ)', 
+                    data: expData.dataMat,
+                    backgroundColor: 'rgba(249, 115, 22, 0.8)', 
+                    borderColor: 'rgba(234, 88, 12, 1)',
+                    borderWidth: 1, borderRadius: 4
+                });
+            }
+
+            expenseChartInst = new Chart(document.getElementById('expenseChart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: expData.labels,
+                    datasets: datasetsList
+                },
+                options:{
+                    responsive:true, maintainAspectRatio:false,
+                    plugins:{ legend: { display: true, position: 'top', labels: { boxWidth: 12, font: {family: 'Prompt'} } } },
+                    scales:{ 
+                        x: { stacked: true },
+                        y: { stacked: true, beginAtZero: true, ticks:{ callback:function(v){ return v.toLocaleString()+' ฿'; } } } 
+                    }
+                }
+            });
+
+            // ดึงข้อมูลสถานะให้ตรงกับ Type ที่เลือก
+            var stData = stats.equipmentStatus[filterType] || stats.equipmentStatus.all;
+            
+            statusChartInst = new Chart(document.getElementById('statusChart').getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: stData.labels,
+                    datasets:[{ data:stData.data, backgroundColor: stData.colors, borderWidth:0, hoverOffset:6 }]
+                },
+                options:{ responsive:true, maintainAspectRatio:false, cutout:'65%', plugins:{ legend:{ position:'right' } } }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof google !== 'undefined' && google.script) {
+                checkUserRoleAndApply();
+            } else {
+                applyRoleAccess('admin'); 
+                drawCharts({});
+                hideLoader();
+            }
+        });
+    </script>
+</body>
+</html>
