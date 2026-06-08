@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Claims Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Kanit', sans-serif; background-color: #f8fafc; }
+        #pageLoader {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.9);
+            z-index: 9999; display: none; align-items: center; justify-content: center; flex-direction: column;
+        }
+        .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+        .tab-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .status-pill { padding: 4px 12px; border-radius: 9999px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+    </style>
+</head>
+<body class="min-h-screen text-slate-700">
+
+    <?!= include('Common_Navbar'); ?>
+
+  
+    
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+                
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+            <div class="inline-flex p-1 bg-slate-200/50 rounded-xl" id="tab-container">
+                <button onclick="switchTab('dashboard')" id="t-dashboard" class="px-6 py-2.5 rounded-lg text-sm font-medium tab-transition bg-white text-orange-600 shadow-sm">Dashboard</button>
+                <button onclick="switchTab('history')" id="t-history" class="px-6 py-2.5 rounded-lg text-sm font-medium tab-transition text-slate-500 hover:text-slate-700">My History</button>
+                <button onclick="switchTab('approvals')" id="t-approvals" style="display: none;" class="px-6 py-2.5 rounded-lg text-sm font-medium tab-transition text-slate-500 hover:text-slate-700">📝 รออนุมัติ</button>
+            </div>
+            
+            <a onclick="navigateTo('form')" class="cursor-pointer w-full md:w-auto bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white px-8 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition shadow-xl shadow-slate-200">
+                <span>➕ ยื่นคำขอเบิกค่าเดินทาง</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+            </a>
+        </div>
+
+        <div id="s-dashboard" class="space-y-8 animate-in fade-in duration-500">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" id="stats-grid"></div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <div class="lg:col-span-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                    <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                        <span class="w-1.5 h-6 bg-blue-500 rounded-full"></span>สถานะคำขอ
+                    </h3>
+                    <div class="relative h-64"><canvas id="statusChart"></canvas></div>
+                </div>
+
+                <div class="lg:col-span-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                    <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                        <span class="w-1.5 h-6 bg-purple-500 rounded-full"></span>พาหนะที่ใช้
+                    </h3>
+                    <div class="relative h-64"><canvas id="vehicleChart"></canvas></div>
+                </div>
+
+                <div class="lg:col-span-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                    <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                        <span class="w-1.5 h-6 bg-emerald-500 rounded-full"></span>รายการล่าสุด
+                    </h3>
+                    <div class="space-y-4" id="adminTableBody"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="s-history" class="hidden bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden animate-in fade-in duration-500">
+            <div class="p-6 border-b border-slate-50 flex justify-between items-center">
+                <h2 class="font-bold text-xl">ประวัติส่วนตัว</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-widest font-bold">
+                        <tr>
+                            <th class="px-6 py-4">วันที่เดินทาง</th>
+                            <th class="px-6 py-4">ประเภท/พาหนะ</th>
+                            <th class="px-6 py-4 text-right">จำนวนเงิน (บาท)</th>
+                            <th class="px-6 py-4 text-center">สถานะ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userHistoryBody" class="divide-y divide-slate-50"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="s-approvals" class="hidden space-y-8 animate-in fade-in duration-500">
+            
+            <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                <div class="p-6 border-b border-slate-50 flex justify-between items-center">
+                    <h2 class="font-bold text-xl text-slate-800">รายการรออนุมัติ (Pending)</h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-widest font-bold">
+                            <tr>
+                                <th class="px-6 py-4">วันที่เดินทาง</th>
+                                <th class="px-6 py-4">ชื่อผู้เบิก</th>
+                                <th class="px-6 py-4">พาหนะ</th>
+                                <th class="px-6 py-4 text-right">ยอดเงิน (บาท)</th>
+                                <th class="px-6 py-4 text-center">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="approvalTableBody" class="divide-y divide-slate-50 text-sm">
+                            <tr><td colspan="5" class="text-center py-8 text-slate-400">กำลังโหลดข้อมูล...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                <div class="p-6 border-b border-slate-50 flex justify-between items-center">
+                    <h2 class="font-bold text-xl text-slate-800">ประวัติการดำเนินการล่าสุด (Action History)</h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-widest font-bold">
+                            <tr>
+                                <th class="px-6 py-4">วันที่เดินทาง</th>
+                                <th class="px-6 py-4">ชื่อผู้เบิก</th>
+                                <th class="px-6 py-4">พาหนะ</th>
+                                <th class="px-6 py-4 text-right">ยอดเงิน (บาท)</th>
+                                <th class="px-6 py-4 text-center">สถานะที่ตัดสิน</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminHistoryTableBody" class="divide-y divide-slate-50 text-sm">
+                            <tr><td colspan="5" class="text-center py-8 text-slate-400">กำลังโหลดข้อมูล...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+      var $ = id => document.getElementById(id);
+      var chart1 = null, chart2 = null;
+
+      window.onload = () => {
+                  if (sessionStorage.getItem('openHistoryTab') === 'true') {
+                      switchTab('history'); // สั่งสลับแท็บ
+                      sessionStorage.removeItem('openHistoryTab'); // เคลียร์ความจำทิ้ง จะได้ไม่ค้าง
+                  }
+                  google.script.run.withSuccessHandler(e => {
+                      const emailEl = document.getElementById('userEmail');
+                      if (emailEl) { // <--- เพิ่มเช็คตรงนี้
+                          emailEl.innerText = e;
+                      }
+                  }).getCurrentUserEmail();
+                  
+           google.script.run.withSuccessHandler(role => {
+               refreshDashboard();
+              if (role === 'admin' || role === 'approver') {
+                  document.getElementById('t-dashboard').innerText = '📊 สรุปยอดทั้งองค์กร';
+                  document.getElementById('t-approvals').style.display = 'inline-block';
+                  loadPendingApprovals(); 
+              } else {
+                  document.getElementById('t-dashboard').innerText = '📊 สรุปยอดของฉัน';
+              }
+
+              // กรณีมี Parameter tab=history หลงเหลืออยู่
+              google.script.url.getLocation(function(location) {
+                  if (location.parameter.tab === 'history') {
+                      switchTab('history'); 
+                  }
+              });
+          }).getUserRole();
+      };
+
+        function navigateTo(pageName) {
+            // 1. แสดงหน้าต่างโหลดบังไว้ก่อน
+            document.getElementById('pageLoader').style.display = 'flex';
+            
+            // 2. เรียกไปที่ฟังก์ชันดึง HTML จากฝั่ง Connect.js มาเขียนทับ (ไม่เกิดการรีเฟรชหน้าจอ)
+            google.script.run
+                .withSuccessHandler(function(htmlContent) {
+                    document.open();
+                    document.write(htmlContent);
+                    document.close();
+                })
+                .withFailureHandler(function(error) {
+                    alert('ไม่สามารถโหลดหน้าเว็บได้: ' + error);
+                    document.getElementById('pageLoader').style.display = 'none';
+                })
+                .loadHtmlPage(pageName); // เรียกฟังก์ชันใน Connect.js
+        }
+
+        function loadPendingApprovals() {
+            google.script.run.withSuccessHandler(function(data) {
+                var tbody = $('approvalTableBody'); // ใช้ $ ที่ประกาศไว้ข้างบน
+                if (!tbody) return; // ถ้าหาที่ลงไม่ได้ ให้หยุดทำงานทันที ไม่ต้อง Error
+                // ... rest of code
+                
+                var html = '';
+                data.forEach(function(item) {
+                    html += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="px-6 py-4">
+                            <span class="font-bold text-slate-700">${item.date}</span><br>
+                            <small class="text-slate-400 font-mono">${item.id}</small>
+                        </td>
+                        <td class="px-6 py-4">${item.name}<br><small class="text-slate-400">${item.dept}</small></td>
+                        <td class="px-6 py-4">🚗 ${item.type}</td>
+                        <td class="px-6 py-4 font-bold text-blue-600 text-right">${item.amount}</td>
+                        <td class="px-6 py-4 flex justify-center gap-2">
+                            <button onclick="approveClaim('${item.id}', 'Approved')" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition shadow-sm">✔️ อนุมัติ</button>
+                            <button onclick="approveClaim('${item.id}', 'Rejected')" class="bg-rose-500 hover:bg-rose-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition shadow-sm">❌ ไม่อนุมัติ</button>
+                        </td>
+                    </tr>`;
+                });
+                tbody.innerHTML = html;
+            }).getPendingClaims();
+        }
+
+        function approveClaim(id, status) {
+            var actionText = status === 'Approved' ? 'อนุมัติ' : 'ไม่อนุมัติ';
+            var remark = "";
+
+            if (status === 'Rejected') {
+                remark = prompt(`⚠️ กรุณาระบุเหตุผลที่ "ไม่อนุมัติ" รายการ ${id}:`);
+                if (remark === null) return; 
+                if (remark.trim() === "") {
+                    alert("กรุณาระบุเหตุผลเพื่อแจ้งให้ผู้เบิกทราบด้วยครับ");
+                    return; 
+                }
+            } else {
+                if(!confirm(`ยืนยันการ ${actionText} รายการ ${id} ใช่หรือไม่?`)) return;
+            }
+            
+            google.script.run.withSuccessHandler(function(res) {
+                if(res === 'Success') {
+                    alert(`ดำเนินการ ${actionText} เรียบร้อยแล้ว!`);
+                    loadPendingApprovals(); 
+                    loadAdminHistory(); 
+                    refreshDashboard(); 
+                } else {
+                    alert('เกิดข้อผิดพลาด: ' + res);
+                }
+            }).updateClaimStatus(id, status, remark); 
+        }
+
+        function switchTab(t) {
+            const tabs = ['dashboard', 'history', 'approvals'];
+            tabs.forEach(tab => {
+                const section = $(`s-${tab}`);
+                const btn = $(`t-${tab}`);
+                
+                // เพิ่ม Guard: ถ้าไม่เจอ Element (เป็น null) ให้ข้ามไปเลย ไม่ต้องฝืน set class
+                if (section) {
+                    section.classList.toggle('hidden', tab !== t);
+                }
+                if (btn) {
+                    btn.className = `px-6 py-2.5 rounded-lg text-sm font-medium tab-transition ${tab === t ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`;
+                }
+            });
+
+            if(t === 'history') loadUserHistory();
+            if(t === 'approvals') {
+                loadPendingApprovals();
+                loadAdminHistory();
+            }
+        }
+
+        var getStatusStyles = s => {
+            if(s === 'Approved') return 'bg-emerald-100 text-emerald-700 border border-emerald-200';
+            if(s === 'Rejected') return 'bg-rose-100 text-rose-700 border border-rose-200';
+            return 'bg-amber-100 text-amber-700 border border-amber-200';
+        };
+
+        function refreshDashboard() {
+            google.script.run.withSuccessHandler(res => {
+                // 1. เช็คก่อนว่าเรายังอยู่ในหน้าที่มี Dashboard ไหม
+                var statsGrid = document.getElementById('stats-grid');
+                if (!statsGrid) return; // ถ้าไม่เจอ ให้หยุดทำงานทันที (ป้องกัน Error)
+
+                if(res.error || !res.stats) return;
+                const { stats, items } = res;
+
+                // 2. อัปเดต Stats
+                const config = [
+                    ['ทั้งหมด (ครั้ง)', stats.totalTrips, 'orange'],
+                    ['งบเบิกจ่ายรวม', stats.totalAmount.toLocaleString(), 'yellow'],
+                    ['รอดำเนินการ', stats.pending, 'amber'],
+                    ['อนุมัติแล้ว', stats.approved, 'green']
+                ];
+                
+                statsGrid.innerHTML = config.map(c => `
+                    <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                        <p class="text-slate-500 text-sm font-medium">${c[0]}</p>
+                        <p class="text-2xl font-bold text-${c[2]}-600 mt-1">${c[1]}</p>
+                    </div>
+                `).join('');
+
+                // 3. อัปเดตกราฟ (เช็คในฟังก์ชัน updateCharts ต่อ)
+                updateCharts(stats);
+            }).getDashboardData();
+        }
+
+        function updateCharts(s) {
+            const ctx1 = document.getElementById('statusChart');
+            const ctx2 = document.getElementById('vehicleChart');
+            
+            // ถ้าหา Canvas ไม่เจอ (เพราะเปลี่ยนหน้าไปแล้ว) ให้เลิกทำ
+            if (!ctx1 || !ctx2) return;
+
+              Chart.defaults.font.family = "'Kanit', sans-serif";
+              if (chart1) chart1.destroy();
+              if (chart2) chart2.destroy();
+
+            chart1 = new Chart($('statusChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Pending', 'Approved', 'Rejected'],
+                    datasets: [{
+                        data: [s.pending, s.approved, s.rejected],
+                        backgroundColor: ['#fbbf24', '#10b981', '#ef4444'],
+                        borderWidth: 0, hoverOffset: 10
+                    }]
+                },
+                options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } } }, cutout: '75%' }
+            });
+
+            const vLabels = Object.keys(s.vehicles);
+            chart2 = new Chart($('vehicleChart'), {
+                type: 'polarArea',
+                data: {
+                    labels: vLabels,
+                    datasets: [{
+                        data: Object.values(s.vehicles),
+                        backgroundColor: [
+                            'rgba(249, 115, 22, 0.8)',
+                            'rgba(250, 204, 21, 0.8)',
+                            'rgba(251, 146, 60, 0.8)',
+                            'rgba(253, 224, 71, 0.8)',
+                            'rgba(234, 88, 12, 0.8)'
+                        ]
+                    }]
+                },
+                options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } } } }
+            });
+        }
+
+        function loadUserHistory() {
+            $('userHistoryBody').innerHTML = '<tr><td colspan="4" class="p-12 text-center text-slate-400">กำลังดึงข้อมูลประวัติ...</td></tr>';
+            google.script.run.withSuccessHandler(data => {
+                if(!data || data.length === 0) {
+                    $('userHistoryBody').innerHTML = '<tr><td colspan="4" class="p-12 text-center text-slate-400">ยังไม่มีข้อมูลการเบิกของคุณ</td></tr>';
+                    return;
+                }
+                
+                $('userHistoryBody').innerHTML = data.map(i => {
+                    let remarkText = (i.status === 'Rejected' && i.remark) 
+                        ? `<div class="text-[11px] text-rose-500 mt-2 font-medium bg-rose-50 p-1.5 rounded-lg border border-rose-100 inline-block">เหตุผล: ${i.remark}</div>` 
+                        : '';
+                    
+                    return `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="px-6 py-4">
+                            <span class="font-bold text-slate-700">${i.date}</span><br>
+                            <small class="text-slate-400 font-mono">${i.id}</small>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="text-slate-600">${i.type}</span>
+                        </td>
+                        <td class="px-6 py-4 text-right font-bold text-slate-800">
+                            ${i.amount.toLocaleString()}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                             <span class="status-pill ${getStatusStyles(i.status)}">${i.status}</span><br>
+                             ${remarkText}
+                        </td>
+                    </tr>`;
+                }).join('');
+            }).getUserHistory();
+        }
+
+        function loadAdminHistory() {
+            $('adminHistoryTableBody').innerHTML = '<tr><td colspan="5" class="text-center py-8 text-slate-400">กำลังโหลดข้อมูล...</td></tr>';
+            google.script.run.withSuccessHandler(function(data) {
+                var tbody = $('adminHistoryTableBody');
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-slate-400">ยังไม่มีประวัติการดำเนินการ</td></tr>';
+                    return;
+                }
+                var html = '';
+                data.forEach(function(item) {
+                    let remarkText = (item.status === 'Rejected' && item.remark) 
+                        ? `<div class="text-[11px] text-rose-500 mt-2 font-medium bg-rose-50 p-1.5 rounded-lg border border-rose-100 inline-block">เหตุผล: ${item.remark}</div>` 
+                        : '';
+                        
+                    html += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="px-6 py-4">
+                            <span class="font-bold text-slate-700">${item.date}</span><br>
+                            <small class="text-slate-400 font-mono">${item.id}</small>
+                        </td>
+                        <td class="px-6 py-4">${item.name}<br><small class="text-slate-400">${item.dept}</small></td>
+                        <td class="px-6 py-4">🚗 ${item.type}</td>
+                        <td class="px-6 py-4 font-bold text-slate-700 text-right">${item.amount.toLocaleString()}</td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="status-pill ${getStatusStyles(item.status)}">${item.status}</span><br>
+                            ${remarkText}
+                        </td>
+                    </tr>`;
+                });
+                tbody.innerHTML = html;
+            }).getAdminActionHistory();
+        }
+    </script>
+
+    <div id="pageLoader" class="fixed inset-0 bg-white/80 backdrop-blur-sm z-[9999] hidden flex-col items-center justify-center">
+    <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-orange-500 mb-4"></div>
+    <p class="text-slate-700 font-bold text-lg">กำลังโหลด...</p>
+</div>
+
+<header> ... </header>
+
+<div id="app-content">
+   <main class="max-w-7xl mx-auto px-4 py-8">
+      </main>
+</div>
+</body>
+</html>
