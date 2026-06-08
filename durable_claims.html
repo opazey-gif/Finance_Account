@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="th" xml:lang="th">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>กรอกข้อมูลวัสดุคงคลัง</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/font-awesome.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+    
+    <style>
+
+        /* การตั้งค่าให้ Loader บังเต็มหน้าจอ */
+        .loader-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(255, 255, 255, 0.9); /* สีขาวโปร่งใส */
+            z-index: 9999; /* กำหนดให้อยู่บนสุดเสมอ */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.4s ease, visibility 0.4s ease; /* เอฟเฟกต์ตอนจางหาย */
+        }
+
+        /* การสร้างวงกลมหมุนๆ (Spinner) */
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid #f3f3f3; /* สีขอบพื้นหลัง */
+            border-top: 6px solid #0d6efd; /* สีขอบที่วิ่งหมุนๆ (สีน้ำเงิน) */
+            border-radius: 50%;
+            animation: spin 1s linear infinite; /* สั่งให้หมุนต่อเนื่อง */
+        }
+
+        /* อนิเมชันการหมุน */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* คลาสสำหรับซ่อน Loader เมื่อโหลดเสร็จ */
+        .loader-hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        body {
+            background-color: #f8f9fa; /* สีพื้นหลังอ่อนๆ ให้ตัว Card โดดเด่นขึ้น */
+        }
+    </style>
+</head>
+<body>
+
+    <?!= include('Common_Navbar'); ?>
+
+
+<div id="pageLoader" class="loader-container">
+    <div class="spinner"></div>
+    <div class="mt-3 fw-bold text-secondary">กำลังโหลดข้อมูล...</div>
+</div>
+    
+
+    <div class="container mb-5">
+        <div class="card shadow border-0 rounded-4">
+            <div class="card-header bg-white border-bottom py-3">
+                <h4 class="mb-0 text-primary">กรอกข้อมูลวัสดุที่ต้องการขอเบิก</h4>
+            </div>
+            <div class="card-body p-4 p-md-5">
+                <h5 class="mb-4 text-secondary border-bottom pb-2">ข้อมูลทั่วไป</h5>
+
+                <form class="form-container" id="claimForm">
+                <div class="row g-4">
+                    
+                    <label for="department">รายชื่อแผนก/หน่วยงาน:</label><br><br>
+                    <select id="department" name="report_type" required>
+                        <option selected disabled>เลือกแผนก/หน่วยงาน...</option>
+                        <option value="OED">OED</option>
+                        <option value="OSP">OSP</option>
+                        <option value="OM">OM</option>
+                        <option value="Academy">Academy</option>
+                        <option value="OJI">OJI</option>
+                        <option value="OBR">OBR</option>
+                        <option value="EXPO">EXPO</option>
+                        <option value="OPC">OPC</option>
+                        <option value="KCS">KCS</option>
+                        <option value="BSM">BSM</option>
+                    </select>
+                    <p style="color: red;">* กรุณาเลือกแผนก/หน่วยงาน</p>
+
+                    <label class="form-label fw-bold text-dark">ชื่อผู้ขอเบิก:</label>
+                    <input type="text" id="fullname" class="form-control" placeholder="ระบุชื่อผู้ขอเบิก">
+                    <p style="color: red;">* กรุณากรอกชื่อผู้ขอเบิก</p>
+                    
+                    <div class="col-md-6">
+                        
+                        <label class="form-label fw-bold text-dark">วัสดุขอเบิก</label>
+                        <select id="material_select" class="form-select">
+                            <option selected disabled>กำลังโหลดรายชื่อวัสดุ...</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-dark">หน่วยนับ</label>
+                        <select id="unit_select" class="form-select">
+                            <option selected disabled>เลือกหน่วยนับ...</option>
+                            <option value="เล่ม">เล่ม (เช่น กระดาษโพสอิท)</option>
+                            <option value="แพ็ค">แพ็ค (เช่น สันรูดพลาสติก)</option>
+                            <option value="รีม">รีม (เช่น กระดาษถ่ายเอกสาร)</option>
+                            <option value="ม้วน">ม้วน (เช่น เทปกาว/เทปใส)</option>
+                            <option value="อัน/ชิ้น">อัน / ชิ้น (เช่น เครื่องคิดเลข, คีมถอดลวด)</option>
+                            <option value="กล่อง">กล่อง (เช่น กล่องใส่ลวดเสียบ)</option>
+                            </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label type="number" class="form-label fw-bold text-dark">จำนวนคงเหลือในคลัง</label>
+                        <input type="number" id="number_stock" class="form-control bg-body-secondary" placeholder="0" readonly>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-dark">จำนวน</label>
+                        <input type="number" id="quantity" class="form-control" placeholder="ระบุจำนวน">
+                    </div>
+
+
+
+                    <div class="col-12">
+                        <label class="form-label fw-bold text-dark">หมายเหตุ</label>
+                        <textarea id="note" class="form-control" rows="3" placeholder="รายละเอียดเพิ่มเติม..."></textarea>
+                    </div>
+
+                    <div class="col-12 text-end mt-5">
+                        <button type="button" onclick="navigateTo('durable_dashboard')" class="btn btn-outline-secondary px-4 me-2">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary px-5 fw-bold shadow-sm">บันทึกข้อมูล</button>
+                    </div>
+
+                </div>
+                </form>
+                </div>
+        </div>
+    </div>
+
+    <script src="/static/js/jquery.min.js"></script>
+    <script src="/static/js/bootstrap.min.js"></script>
+    <script src="/static/js/script.js"></script>
+    
+    <script>
+
+    // 1. ประกาศตัวแปรเก็บข้อมูล
+    let inventoryData = {};
+
+    window.addEventListener('DOMContentLoaded', function() {
+        const loader = document.getElementById('pageLoader');
+        const materialSelect = document.getElementById('material_select');
+
+        if(loader) loader.classList.remove('loader-hidden');
+
+        // ดึงข้อมูลจาก Connect.js
+        google.script.run
+            .withSuccessHandler(function(data) {
+                if(data) {
+                    inventoryData = data;
+
+                    // --- เพิ่มส่วนการสร้าง Dropdown อัตโนมัติที่นี่ ---
+                    materialSelect.innerHTML = '<option selected disabled>เลือกวัสดุขอเบิก...</option>';
+                    
+                    // ดึงชื่อวัสดุทั้งหมดออกมา เรียงลำดับ ก-ฮ
+                    const materialNames = Object.keys(data).sort();
+                    
+                    materialNames.forEach(function(name) {
+                        let option = document.createElement('option');
+                        option.value = name;
+                        option.text = name;
+                        materialSelect.add(option);
+                    });
+                    // -------------------------------------------
+
+                    console.log("โหลดรายชื่อสำเร็จ");
+                }
+                if(loader) loader.classList.add('loader-hidden');
+            })
+            .withFailureHandler(function(error) {
+                alert('โหลดข้อมูลล้มเหลว: ' + error);
+                if(loader) loader.classList.add('loader-hidden');
+            })
+            .getMaterialData(); // เรียกฟังก์ชันจาก Connect.js
+    });
+
+    // 3. ประกาศตัวแปรอ้างอิง Element
+    const materialSelect = document.getElementById('material_select');
+    const unitSelect = document.getElementById('unit_select');
+    const stockInput = document.getElementById('number_stock'); // ช่องที่คุณให้แสดงจำนวนคงเหลือ
+    const qtyInput = document.getElementById('quantity');
+
+    // 4. สร้าง Event เมื่อผู้ใช้ "เลือกวัสดุขอเบิก"
+    materialSelect.addEventListener('change', function() {
+        const selectedMaterial = this.value.trim();
+        const data = inventoryData[selectedMaterial]; // ค้นหาในข้อมูลที่ดึงมา
+
+        if (data) {
+            // ใส่จำนวนคงคลัง
+            if(stockInput) stockInput.value = data.stock;
+            
+            // จัดการช่องหน่วยนับ (เพิ่ม Option ให้ถ้าไม่มีใน Dropdown)
+            let unitOptionExists = Array.from(unitSelect.options).some(opt => opt.value === data.unit);
+            if (!unitOptionExists) {
+                let newOption = new Option(data.unit, data.unit);
+                unitSelect.add(newOption);
+            }
+            unitSelect.value = data.unit;
+
+            // รีเซ็ตช่องจำนวนเมื่อเปลี่ยนของ
+            qtyInput.value = '';
+
+            // ตั้งค่าสูงสุดในการเบิก
+            qtyInput.max = data.stock;
+            qtyInput.min = 1;
+
+            // ตรวจสอบสินค้าหมด
+            if (data.stock <= 0) {
+                qtyInput.disabled = true;
+                qtyInput.placeholder = "สินค้าหมด";
+            } else {
+                qtyInput.disabled = false;
+                qtyInput.placeholder = "ระบุจำนวน (สูงสุด " + data.stock + ")";
+            }
+        }
+    });
+
+    // 5. ป้องกันการเบิกเกินจำนวนสต็อก
+    qtyInput.addEventListener('input', function() {
+        const maxStock = parseInt(this.max) || 0;
+        const currentQty = parseInt(this.value) || 0;
+
+        if (currentQty > maxStock) {
+            alert('ไม่สามารถเบิกเกินจำนวนคงเหลือในคลังได้ (สูงสุด ' + maxStock + ')');
+            this.value = maxStock;
+        }
+    });
+
+    function navigateTo(pageName) {
+        // 1. เรียกให้ Loader กลับมาแสดง (ลบคลาสที่ใช้ซ่อนออก)
+        const loader = document.getElementById('pageLoader');
+        if(loader) loader.classList.remove('loader-hidden');
+
+        // 2. เริ่มดึงข้อมูลหน้าใหม่
+        google.script.run
+            .withSuccessHandler(function(htmlContent) {
+                document.open();
+                document.write(htmlContent);
+                document.close();
+            })
+            .withFailureHandler(function(error) {
+                alert('ไม่สามารถโหลดหน้าเว็บได้: ' + error);
+                // ถ้า error ก็ต้องซ่อน Loader กลับไปด้วย จะได้ไม่ค้าง
+                if(loader) loader.classList.add('loader-hidden');
+            })
+            .loadHtmlPage(pageName); 
+    }
+
+    window.addEventListener('load', function() {
+        const loader = document.getElementById('pageLoader');
+        // เพิ่มคลาส loader-hidden เพื่อให้ CSS สั่งให้มันจางหายไป
+        loader.classList.add('loader-hidden');
+    });
+
+    // ==========================================
+    // ระบบบันทึกข้อมูล (Submit Form)
+    // ==========================================
+    const claimForm = document.getElementById('claimForm');
+
+    claimForm.addEventListener('submit', function(e) {
+        e.preventDefault(); // ป้องกันไม่ให้หน้าเว็บรีเฟรชเมื่อกดปุ่ม
+
+        // 1. ดึงข้อมูล GFMIS (รหัสวัสดุ) จาก Object ที่เราโหลดมา
+        const selectedMaterial = materialSelect.value.trim();
+        const materialInfo = inventoryData[selectedMaterial];
+        
+        // 2. รวบรวมข้อมูลทั้งหมดในฟอร์ม
+        const formData = {
+            department: document.getElementById('department').value,
+            requester: document.getElementById('fullname').value,
+            item: selectedMaterial,
+            gfmis: materialInfo ? materialInfo.id : "-", // ดึงรหัสวัสดุจาก Database
+            unit: unitSelect.value,
+            count: qtyInput.value,
+            note: document.getElementById('note').value || "-"
+        };
+
+        // 3. ตรวจสอบว่าเลือกข้อมูลครบไหม
+        if (!formData.department || formData.department === "เลือกส่วนงาน/แผนก..." || !formData.item) {
+            alert("กรุณาระบุ แผนก และ วัสดุที่ต้องการเบิก ให้ครบถ้วน");
+            return;
+        }
+
+        // 4. แสดง Loader ระหว่างบันทึก
+        const loader = document.getElementById('pageLoader');
+        if(loader) loader.classList.remove('loader-hidden');
+
+        // 5. ส่งข้อมูลไปที่ Connect.js เพื่อบันทึก
+        google.script.run
+            .withSuccessHandler(function(response) {
+                // แสดงข้อความแจ้งเตือนว่าสำเร็จ
+                alert('บันทึกข้อมูลสำเร็จเรียบร้อยแล้ว!'); 
+                
+                // แทนที่จะ reload หน้าเดิม ให้เปลี่ยนไปหน้า dashboard แทน
+                // ใช้ชื่อหน้า 'durable_dashboard' ตามชื่อไฟล์ .html ของคุณ
+                navigateTo('durable_dashboard'); 
+            })
+            .withFailureHandler(function(error) {
+                alert('เกิดข้อผิดพลาดในการบันทึก: ' + error.message);
+                if(loader) loader.classList.add('loader-hidden');
+            })
+            .saveClaimData(formData);
+    });
+
+    
+    </script>
+</body>
+</html>
