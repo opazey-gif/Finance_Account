@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>จัดการบัญชีผู้ใช้ - ระบบจัดการ TIJ</title>
+
+  <?!= include('Common_CSS'); ?>
+
+  <style>
+    /* ── Page-specific overrides ── */
+    body { background-color: #f8fafc; }
+
+    /* Hero header */
+    .page-hero {
+      background: linear-gradient(135deg, #f97316 0%, #fb923c 60%, #fbbf24 100%);
+      border-radius: 1.5rem;
+      padding: 2rem 2.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 30px rgba(249,115,22,.25);
+      position: relative;
+      overflow: hidden;
+    }
+    .page-hero::before {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 200px; height: 200px;
+      background: rgba(255,255,255,.08);
+      border-radius: 50%;
+    }
+    .page-hero::after {
+      content: '';
+      position: absolute;
+      bottom: -60px; right: 80px;
+      width: 160px; height: 160px;
+      background: rgba(255,255,255,.06);
+      border-radius: 50%;
+    }
+    .page-hero h2 { color: #fff; font-weight: 800; margin: 0 0 .3rem; font-size: 1.6rem; }
+    .page-hero p  { color: rgba(255,255,255,.85); margin: 0; font-size: .9rem; }
+
+    /* Stats row */
+    .stat-mini {
+      background: #fff;
+      border-radius: 1rem;
+      padding: 1.1rem 1.4rem;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 12px rgba(0,0,0,.04);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      transition: all .3s ease;
+    }
+    .stat-mini:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(249,115,22,.12); }
+    .stat-mini-icon {
+      width: 48px; height: 48px; border-radius: .85rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; flex-shrink: 0;
+    }
+    .stat-mini-val { font-size: 1.8rem; font-weight: 800; line-height: 1; }
+    .stat-mini-lbl { font-size: .78rem; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+
+    /* Toolbar */
+    .toolbar {
+      background: #fff;
+      border-radius: 1.25rem;
+      padding: 1.25rem 1.5rem;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 12px rgba(0,0,0,.04);
+      display: flex;
+      flex-wrap: wrap;
+      gap: .75rem;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    .search-wrap { position: relative; flex: 1; min-width: 200px; }
+    .search-wrap i {
+      position: absolute; left: 12px; top: 50%;
+      transform: translateY(-50%); color: #94a3b8;
+    }
+    .search-wrap input {
+      padding-left: 36px !important;
+      border-radius: 10px !important;
+      border: 1px solid #e2e8f0 !important;
+      height: 42px;
+      width: 100%;
+      font-size: .9rem;
+      transition: all .2s;
+    }
+    .search-wrap input:focus {
+      border-color: #f97316 !important;
+      box-shadow: 0 0 0 3px rgba(249,115,22,.12) !important;
+      outline: none;
+    }
+    .filter-select {
+      border: 1px solid #e2e8f0; border-radius: 10px;
+      padding: 8px 14px; font-size: .88rem; height: 42px;
+      background: #fff; cursor: pointer;
+      transition: border-color .2s;
+      min-width: 140px;
+    }
+    .filter-select:focus { border-color: #f97316; outline: none; box-shadow: 0 0 0 3px rgba(249,115,22,.12); }
+
+    /* Table card */
+    .user-table-wrap {
+      background: #fff;
+      border-radius: 1.25rem;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 12px rgba(0,0,0,.04);
+      overflow: hidden;
+    }
+    .user-table-wrap table { margin: 0; }
+    .user-table-wrap thead th {
+      background: #f8fafc;
+      font-size: .78rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .05em;
+      color: #475569; padding: 14px 16px;
+      border-bottom: 2px solid #e2e8f0;
+      white-space: nowrap;
+    }
+    .user-table-wrap tbody td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle; font-size: .9rem;
+    }
+    .user-table-wrap tbody tr:last-child td { border-bottom: none; }
+    .user-table-wrap tbody tr:hover { background: rgba(249,115,22,.025); }
+
+    /* Avatar circle */
+    .avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: .95rem; flex-shrink: 0;
+    }
+
+    /* Role badge */
+    .role-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 11px; border-radius: 999px;
+      font-size: .75rem; font-weight: 700;
+    }
+    .role-admin  { background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; }
+    .role-driver { background: #f0fdf4; color: #15803d; border: 1px solid #86efac; }
+    .role-user   { background: #f0f9ff; color: #0369a1; border: 1px solid #7dd3fc; }
+    .role-unauthorized { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
+
+    /* Status dot */
+    .status-dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      display: inline-block; margin-right: 5px;
+    }
+    .dot-active   { background: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,.15); }
+    .dot-inactive { background: #94a3b8; }
+
+    /* Action buttons */
+    .btn-action {
+      width: 32px; height: 32px; border-radius: 8px;
+      border: 1px solid #e2e8f0; background: #f8fafc;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all .2s; font-size: .85rem;
+      color: #64748b;
+    }
+    .btn-action:hover.edit-btn { background: #eff6ff; border-color: #93c5fd; color: #2563eb; }
+    .btn-action:hover.del-btn  { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
+
+    /* Empty state */
+    .empty-state {
+      padding: 4rem 2rem; text-align: center; color: #94a3b8;
+    }
+    .empty-state .empty-icon { font-size: 3.5rem; margin-bottom: 1rem; }
+
+    /* Modal styling */
+    .modal-content { border-radius: 1.25rem; border: none; box-shadow: 0 25px 50px rgba(0,0,0,.15); }
+    .modal-header {
+      background: linear-gradient(135deg,#f97316,#fb923c);
+      color: #fff; border-radius: 1.25rem 1.25rem 0 0;
+      padding: 1.2rem 1.5rem; border: none;
+    }
+    .modal-header .modal-title { font-weight: 700; font-size: 1.05rem; }
+    .modal-header .btn-close { filter: brightness(0) invert(1); opacity: .85; }
+    .modal-body { padding: 1.75rem; }
+    .modal-footer { border: none; padding: 1rem 1.75rem 1.5rem; }
+
+    /* Pagination */
+    .pagination-wrap {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.5rem; border-top: 1px solid #f1f5f9;
+      flex-wrap: wrap; gap: .5rem;
+    }
+    .page-info { font-size: .85rem; color: #64748b; }
+    .page-btns { display: flex; gap: 4px; }
+    .page-btn {
+      width: 34px; height: 34px; border-radius: 8px;
+      border: 1px solid #e2e8f0; background: #fff;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: .85rem; font-weight: 600; color: #475569;
+      transition: all .2s;
+    }
+    .page-btn:hover, .page-btn.active {
+      background: #f97316; color: #fff; border-color: #f97316;
+    }
+    .page-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    @media (max-width: 768px) {
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .user-table-wrap { overflow-x: auto; }
+      .page-hero { padding: 1.4rem 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Page Loader -->
+  <div id="pageLoader" class="loader-container">
+    <div class="spinner"></div>
+    <div class="loader-message">กำลังโหลดข้อมูลผู้ใช้...</div>
+  </div>
+
+  <?!= include('Common_Navbar'); ?>
+
+  <div class="container-fluid px-4 pb-5" style="max-width:1300px; margin:0 auto;">
+
+    <!-- Hero Header -->
+    <div class="page-hero mt-3">
+      <div style="position:relative; z-index:1;">
+        <h2>🛡️ จัดการบัญชีผู้ใช้</h2>
+        <p>เพิ่ม แก้ไข และกำหนดสิทธิ์การใช้งานสำหรับบุคลากรในระบบ</p>
+      </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="row g-3 mb-4" id="statsRow">
+      <div class="col-6 col-md-3">
+        <div class="stat-mini">
+          <div class="stat-mini-icon" style="background:#fff7ed;">👥</div>
+          <div>
+            <div class="stat-mini-val" style="color:#f97316;" id="statTotal">-</div>
+            <div class="stat-mini-lbl">ผู้ใช้ทั้งหมด</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-mini">
+          <div class="stat-mini-icon" style="background:#fff7ed;">🛡️</div>
+          <div>
+            <div class="stat-mini-val" style="color:#c2410c;" id="statAdmin">-</div>
+            <div class="stat-mini-lbl">แอดมิน</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-mini">
+          <div class="stat-mini-icon" style="background:#f0fdf4;">🚐</div>
+          <div>
+            <div class="stat-mini-val" style="color:#15803d;" id="statDriver">-</div>
+            <div class="stat-mini-lbl">คนขับรถ</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-mini">
+          <div class="stat-mini-icon" style="background:#f0f9ff;">👤</div>
+          <div>
+            <div class="stat-mini-val" style="color:#0369a1;" id="statUser">-</div>
+            <div class="stat-mini-lbl">ผู้ใช้ทั่วไป</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="search-wrap">
+        <i class="bi bi-search"></i>
+        <input type="text" id="searchInput" placeholder="ค้นหาชื่อ, อีเมล, แผนก..." oninput="filterTable()">
+      </div>
+      <select class="filter-select" id="roleFilter" onchange="filterTable()">
+        <option value="">ทุกบทบาท</option>
+        <option value="admin">🛡️ แอดมิน</option>
+        <option value="driver">🚐 คนขับรถ</option>
+        <option value="user">👤 ผู้ใช้ทั่วไป</option>
+      </select>
+      <select class="filter-select" id="statusFilter" onchange="filterTable()">
+        <option value="">ทุกสถานะ</option>
+        <option value="active">✅ ใช้งาน</option>
+        <option value="inactive">⛔ ระงับ</option>
+      </select>
+      <button class="btn-orange d-flex align-items-center gap-2" onclick="openAddModal()" style="height:42px; padding:0 18px; border-radius:10px;">
+        <i class="bi bi-person-plus-fill"></i> เพิ่มผู้ใช้
+      </button>
+      <button class="btn-blue d-flex align-items-center gap-2" onclick="loadUsers()" style="height:42px; padding:0 14px; border-radius:10px; font-weight:600;">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
+    </div>
+
+    <!-- User Table -->
+    <div class="user-table-wrap">
+      <table class="table" id="userTable">
+        <thead>
+          <tr>
+            <th style="width:50px;">#</th>
+            <th>ชื่อ-นามสกุล</th>
+            <th>อีเมล</th>
+            <th>แผนก</th>
+            <th>บทบาท</th>
+            <th>สถานะ</th>
+            <th>วันที่เพิ่ม</th>
+            <th style="width:90px; text-align:center;">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody id="userTableBody">
+          <tr>
+            <td colspan="8">
+              <div class="empty-state">
+                <div class="empty-icon">⏳</div>
+                <div style="font-weight:600; color:#64748b;">กำลังโหลดข้อมูล...</div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="pagination-wrap">
+        <div class="page-info" id="pageInfo">แสดง 0 รายการ</div>
+        <div class="page-btns" id="pageBtns"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============================================================
+       MODAL: Add / Edit User
+       ============================================================ -->
+  <div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <span class="modal-title" id="modalTitle">➕ เพิ่มผู้ใช้ใหม่</span>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editUserId">
+
+          <div class="mb-3">
+            <label class="form-label">ชื่อ-นามสกุล <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="inputName" placeholder="เช่น สมชาย ใจดี">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">อีเมล (Google Account) <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" id="inputEmail" placeholder="example@gmail.com">
+            <div class="form-text" id="emailHint">ต้องเป็นบัญชี Google ที่ใช้ล็อกอินเข้าระบบ</div>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">บทบาท <span class="text-danger">*</span></label>
+              <select class="form-select" id="inputRole">
+                <option value="">-- เลือกบทบาท --</option>
+                <option value="admin">🛡️ แอดมิน</option>
+                <option value="driver">🚐 คนขับรถ</option>
+                <option value="user">👤 ผู้ใช้ทั่วไป</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">สถานะ</label>
+              <select class="form-select" id="inputStatus">
+                <option value="active">✅ ใช้งาน</option>
+                <option value="inactive">⛔ ระงับ</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-0 mt-3">
+            <label class="form-label">แผนก / ฝ่าย</label>
+            <input type="text" class="form-control" id="inputDept" placeholder="เช่น ฝ่ายสารสนเทศ, ฝ่ายบริหาร">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="button" class="btn-orange px-5" onclick="saveUser()" style="border-radius:10px;">
+            <i class="bi bi-check-lg me-1"></i> บันทึก
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <?!= include('Common_JS'); ?>
+
+  <script>
+    /* ============================================================
+       STATE
+       ============================================================ */
+    var allUsers    = [];
+    var filtered    = [];
+    var currentPage = 1;
+    var perPage     = 12;
+
+    var AVATAR_COLORS = [
+      ['#fff7ed','#c2410c'],['#f0fdf4','#15803d'],['#f0f9ff','#0369a1'],
+      ['#fdf4ff','#7e22ce'],['#fef9c3','#854d0e'],['#ecfdf5','#065f46']
+    ];
+
+    function avatarColor(name) {
+      var idx = (name || '').charCodeAt(0) % AVATAR_COLORS.length;
+      return AVATAR_COLORS[idx];
+    }
+
+    /* ============================================================
+       LOAD USERS  (GAS backend)
+       ============================================================ */
+    function loadUsers() {
+      document.getElementById('userTableBody').innerHTML =
+        '<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">⏳</div><div style="font-weight:600;color:#64748b;">กำลังโหลดข้อมูล...</div></div></td></tr>';
+
+      google.script.run
+        .withSuccessHandler(function(users) {
+          allUsers = users || [];
+          updateStats();
+          filterTable();
+        })
+        .withFailureHandler(function(err) {
+          showToast('error', 'โหลดข้อมูลล้มเหลว: ' + err);
+          document.getElementById('userTableBody').innerHTML =
+            '<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">❌</div><div>ไม่สามารถโหลดข้อมูลได้</div></div></td></tr>';
+        })
+        .getUsers();
+    }
+
+    /* ============================================================
+       STATS
+       ============================================================ */
+    function updateStats() {
+      document.getElementById('statTotal').textContent  = allUsers.length;
+      document.getElementById('statAdmin').textContent  = allUsers.filter(function(u){ return u.role === 'admin'; }).length;
+      document.getElementById('statDriver').textContent = allUsers.filter(function(u){ return u.role === 'driver'; }).length;
+      document.getElementById('statUser').textContent   = allUsers.filter(function(u){ return u.role === 'user'; }).length;
+    }
+
+    /* ============================================================
+       FILTER & RENDER
+       ============================================================ */
+    function filterTable() {
+      var q      = (document.getElementById('searchInput').value   || '').toLowerCase();
+      var role   = document.getElementById('roleFilter').value;
+      var status = document.getElementById('statusFilter').value;
+
+      filtered = allUsers.filter(function(u) {
+        var matchQ = !q || (u.name||'').toLowerCase().includes(q)
+                       || (u.email||'').toLowerCase().includes(q)
+                       || (u.department||'').toLowerCase().includes(q);
+        var matchR = !role   || u.role   === role;
+        var matchS = !status || u.status === status;
+        return matchQ && matchR && matchS;
+      });
+
+      currentPage = 1;
+      renderTable();
+    }
+
+    function renderTable() {
+      var tbody   = document.getElementById('userTableBody');
+      var start   = (currentPage - 1) * perPage;
+      var page    = filtered.slice(start, start + perPage);
+      var total   = filtered.length;
+      var pages   = Math.ceil(total / perPage);
+
+      if (!page.length) {
+        tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">🔍</div><div style="font-weight:600;color:#64748b;">ไม่พบผู้ใช้ที่ตรงกับเงื่อนไข</div></div></td></tr>';
+        document.getElementById('pageInfo').textContent = 'แสดง 0 รายการ';
+        document.getElementById('pageBtns').innerHTML   = '';
+        return;
+      }
+
+      tbody.innerHTML = page.map(function(u, i) {
+        var colors = avatarColor(u.name);
+        var initials = (u.name || '?').split(' ').map(function(w){ return w[0]; }).join('').slice(0,2).toUpperCase();
+        var roleHtml = roleLabel(u.role);
+        var statusHtml = u.status === 'inactive'
+          ? '<span class="status-dot dot-inactive"></span>ระงับ'
+          : '<span class="status-dot dot-active"></span>ใช้งาน';
+        var dateStr = u.createdAt ? new Date(u.createdAt).toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'numeric'}) : '-';
+
+        return '<tr>' +
+          '<td style="color:#94a3b8; font-size:.82rem;">' + (start + i + 1) + '</td>' +
+          '<td><div style="display:flex; align-items:center; gap:10px;">' +
+            '<div class="avatar" style="background:' + colors[0] + '; color:' + colors[1] + ';">' + initials + '</div>' +
+            '<div><div style="font-weight:600; color:#1e293b;">' + (u.name || '-') + '</div>' +
+            (u.department ? '<div style="font-size:.78rem; color:#94a3b8;">' + u.department + '</div>' : '') +
+            '</div></div></td>' +
+          '<td style="color:#475569; font-size:.88rem;">' + (u.email || '-') + '</td>' +
+          '<td style="color:#475569;">' + (u.department || '-') + '</td>' +
+          '<td>' + roleHtml + '</td>' +
+          '<td style="font-size:.88rem;">' + statusHtml + '</td>' +
+          '<td style="font-size:.82rem; color:#94a3b8; white-space:nowrap;">' + dateStr + '</td>' +
+          '<td style="text-align:center; white-space:nowrap;">' +
+            '<button class="btn-action edit-btn me-1" onclick="openEditModal(' + JSON.stringify(u).replace(/"/g,'&quot;') + ')" title="แก้ไข"><i class="bi bi-pencil-fill"></i></button>' +
+            '<button class="btn-action del-btn" onclick="confirmDelete(\'' + u.email + '\',\'' + (u.name||'') + '\')" title="ลบ"><i class="bi bi-trash3-fill"></i></button>' +
+          '</td>' +
+        '</tr>';
+      }).join('');
+
+      // Pagination info
+      document.getElementById('pageInfo').textContent =
+        'แสดง ' + (start+1) + '–' + Math.min(start+perPage, total) + ' จาก ' + total + ' รายการ';
+
+      // Pagination buttons
+      var btns = '';
+      btns += '<button class="page-btn" onclick="goPage(' + (currentPage-1) + ')" ' + (currentPage===1?'disabled':'') + '>‹</button>';
+      for (var p = 1; p <= pages; p++) {
+        if (pages <= 7 || Math.abs(p - currentPage) < 3 || p === 1 || p === pages) {
+          btns += '<button class="page-btn' + (p===currentPage?' active':'') + '" onclick="goPage(' + p + ')">' + p + '</button>';
+        } else if (Math.abs(p - currentPage) === 3) {
+          btns += '<span style="padding:0 4px; color:#94a3b8;">…</span>';
+        }
+      }
+      btns += '<button class="page-btn" onclick="goPage(' + (currentPage+1) + ')" ' + (currentPage===pages?'disabled':'') + '>›</button>';
+      document.getElementById('pageBtns').innerHTML = btns;
+    }
+
+    function goPage(p) {
+      var pages = Math.ceil(filtered.length / perPage);
+      if (p < 1 || p > pages) return;
+      currentPage = p;
+      renderTable();
+    }
+
+    function roleLabel(role) {
+      var map = {
+        admin  : '<span class="role-badge role-admin">🛡️ แอดมิน</span>',
+        driver : '<span class="role-badge role-driver">🚐 คนขับรถ</span>',
+        user   : '<span class="role-badge role-user">👤 ผู้ใช้ทั่วไป</span>'
+      };
+      return map[role] || '<span class="role-badge role-unauthorized">⛔ ไม่ระบุ</span>';
+    }
+
+    /* ============================================================
+       ADD / EDIT MODAL
+       ============================================================ */
+    function openAddModal() {
+      document.getElementById('modalTitle').textContent   = '➕ เพิ่มผู้ใช้ใหม่';
+      document.getElementById('editUserId').value         = '';
+      document.getElementById('inputName').value          = '';
+      document.getElementById('inputEmail').value         = '';
+      document.getElementById('inputEmail').readOnly      = false;
+      document.getElementById('inputEmail').style.background = '';
+      document.getElementById('emailHint').textContent    = 'ต้องเป็นบัญชี Google ที่ใช้ล็อกอินเข้าระบบ';
+      document.getElementById('inputRole').value          = '';
+      document.getElementById('inputStatus').value        = 'active';
+      document.getElementById('inputDept').value          = '';
+      new bootstrap.Modal(document.getElementById('userModal')).show();
+    }
+
+    function openEditModal(u) {
+      document.getElementById('modalTitle').textContent   = '✏️ แก้ไขข้อมูลผู้ใช้';
+      document.getElementById('editUserId').value         = u.email || '';  // email = primary key
+      document.getElementById('inputName').value          = u.name || '';
+      document.getElementById('inputEmail').value         = u.email || '';
+      // Lock email เมื่อ Edit (email คือ primary key — เปลี่ยนได้แต่ระวัง)
+      document.getElementById('inputEmail').readOnly      = false;
+      document.getElementById('inputEmail').style.background = '#fffbeb';
+      document.getElementById('emailHint').innerHTML      = '⚠️ หากเปลี่ยนอีเมล จะอัปเดต record โดยใช้อีเมลเดิมเป็น key ค้นหา';
+      document.getElementById('inputRole').value          = u.role || '';
+      document.getElementById('inputStatus').value        = u.status === 'inactive' ? 'inactive' : 'active';
+      document.getElementById('inputDept').value          = u.department || '';
+      new bootstrap.Modal(document.getElementById('userModal')).show();
+    }
+
+    /* ============================================================
+       SAVE (ADD / UPDATE)
+       ============================================================ */
+    function saveUser() {
+      var id     = document.getElementById('editUserId').value.trim();  // = original email ถ้า edit
+      var name   = document.getElementById('inputName').value.trim();
+      var email  = document.getElementById('inputEmail').value.trim().toLowerCase();
+      var role   = document.getElementById('inputRole').value;
+      var status = document.getElementById('inputStatus').value;
+      var dept   = document.getElementById('inputDept').value.trim();
+      var isEdit = !!id;
+
+      if (!name || !email || !role) {
+        showToast('warning', 'กรุณากรอกข้อมูลให้ครบถ้วน');
+        return;
+      }
+      var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        showToast('warning', 'รูปแบบอีเมลไม่ถูกต้อง');
+        return;
+      }
+
+      // id = original email (ใช้ค้นหาแถว), email = ค่าใหม่ที่จะบันทึก
+      var payload = { id: id, name: name, email: email, role: role, status: status, department: dept };
+
+      bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+      showLoader();
+
+      var fn = isEdit ? 'updateUser' : 'addUser';
+      google.script.run
+        .withSuccessHandler(function(res) {
+          hideLoader();
+          if (res && res.success) {
+            showToast('success', isEdit ? 'แก้ไขข้อมูลสำเร็จ' : 'เพิ่มผู้ใช้สำเร็จ');
+            loadUsers();
+          } else {
+            alertError('เกิดข้อผิดพลาด', (res && res.message) || 'ไม่สามารถบันทึกข้อมูลได้');
+          }
+        })
+        .withFailureHandler(function(err) {
+          hideLoader();
+          alertError('เกิดข้อผิดพลาด', err.toString());
+        })
+        [fn](payload);
+    }
+
+    /* ============================================================
+       DELETE
+       ============================================================ */
+    function confirmDelete(id, name) {
+      Swal.fire({
+        title: 'ลบผู้ใช้นี้?',
+        html: 'คุณต้องการลบบัญชีของ <strong>' + name + '</strong> ออกจากระบบ?<br><span style="font-size:.85rem; color:#94a3b8;">การกระทำนี้ไม่สามารถย้อนกลับได้</span>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: '🗑️ ลบเลย',
+        cancelButtonText : 'ยกเลิก',
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor : '#94a3b8',
+        borderRadius: '1rem'
+      }).then(function(result) {
+        if (!result.isConfirmed) return;
+        showLoader();
+        google.script.run
+          .withSuccessHandler(function(res) {
+            hideLoader();
+            if (res && res.success) {
+              showToast('success', 'ลบผู้ใช้สำเร็จ');
+              loadUsers();
+            } else {
+              alertError('เกิดข้อผิดพลาด', (res && res.message) || 'ไม่สามารถลบข้อมูลได้');
+            }
+          })
+          .withFailureHandler(function(err) {
+            hideLoader();
+            alertError('เกิดข้อผิดพลาด', err.toString());
+          })
+          .deleteUser(id);
+      });
+    }
+
+    /* ============================================================
+       INIT
+       ============================================================ */
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof google !== 'undefined' && google.script) {
+        loadUsers();
+      }
+    });
+  </script>
+</body>
+</html>
