@@ -1,0 +1,196 @@
+<!-- ================================================================
+     COMMON_NAVBAR.html - Shared Navigation Bar (Strict User Access Control)
+     ================================================================ -->
+
+<style>
+  .tij-navbar {
+    background   : #ffffff;
+    border-bottom: 3px solid #f97316;
+    padding      : 0.6rem 1rem;
+    position     : sticky;
+    top          : 0;
+    z-index      : 9990;
+    box-shadow   : 0 2px 12px rgba(249,115,22,.10);
+    margin-bottom: 1.25rem;
+  }
+
+  .tij-navbar-inner {
+    display        : flex;
+    flex-direction : row;
+    align-items    : center;
+    justify-content: space-between;
+    flex-wrap      : wrap;
+    gap            : 8px;
+    max-width      : 1400px;
+    margin         : 0 auto;
+    padding        : 0 8px;
+  }
+
+  .tij-nav-logo {
+    display    : flex;
+    align-items: center;
+    gap        : 10px;
+    cursor     : pointer;
+    text-decoration: none;
+    transition : opacity .2s;
+  }
+  .tij-nav-logo:hover {
+    opacity: 0.85;
+  }
+
+  .tij-nav-title {
+    font-size  : 1.15rem;
+    font-weight: 700;
+    color      : #1e293b;
+    font-family: 'Prompt', sans-serif;
+  }
+
+  .tij-nav-links {
+    display    : flex;
+    align-items: center;
+    gap        : 8px;
+    flex-wrap  : wrap;
+  }
+
+  .tij-nav-item {
+    padding        : 0.5rem 0.85rem;
+    border-radius  : 10px;
+    text-decoration: none;
+    color          : #475569;
+    font-size      : 0.9rem;
+    font-weight    : 500;
+    transition     : all 0.25s ease;
+    cursor         : pointer;
+    font-family    : 'Prompt', sans-serif;
+  }
+  .tij-nav-item:hover {
+    background: #f1f5f9;
+    color     : #f97316;
+  }
+
+  .tij-nav-item.active {
+    background: #fff7ed;
+    color     : #f97316;
+    font-weight: 600;
+  }
+
+  /* ── เมนู admin พิเศษ: มีขอบสีส้มบาง ๆ ── */
+  .tij-nav-item.admin-nav-special {
+    border: 1.5px solid #fed7aa;
+    background: #fff7ed;
+    color: #c2410c;
+    font-weight: 600;
+  }
+  .tij-nav-item.admin-nav-special:hover {
+    background: #ffedd5;
+    border-color: #f97316;
+    color: #ea580c;
+  }
+
+  /* ── User badge ── */
+  .tij-nav-user {
+    display    : flex;
+    align-items: center;
+    gap        : 10px;
+  }
+
+  .tij-role-badge {
+    padding      : 4px 10px;
+    border-radius: 8px;
+    font-size    : 0.75rem;
+    font-weight  : 600;
+    font-family  : 'Prompt', sans-serif;
+    border       : 1px solid #e2e8f0;
+    transition   : all 0.25s ease;
+  }
+</style>
+
+<nav class="tij-navbar">
+  <div class="tij-navbar-inner">
+    
+    <!-- ฝั่งซ้าย: Logo & Title -->
+    <div class="tij-nav-logo" onclick="navigateTo('main')">
+      <span style="font-size: 1.5rem;">🏢</span>
+      <span class="tij-nav-title">ระบบจัดการ TIJ</span>
+    </div>
+
+    <!-- กลาง: ลิงก์นำทาง (ควบคุมการแสดงผลผ่านคลาสสิทธิ์) -->
+    <div class="tij-nav-links">
+      <a class="tij-nav-item" onclick="navigateTo('main')">🏠 หน้าแรก</a>
+      
+      <!-- เมนูของ Admin เท่านั้น -->
+      <a class="tij-nav-item admin-only" onclick="navigateTo('van_admin')">🚐 สั่งจ่ายงานรถตู้</a>
+      <a class="tij-nav-item admin-only" onclick="navigateTo('van_admin_summary')">📈 สรุปภาพรวมรถตู้</a>
+      <a class="tij-nav-item admin-only" onclick="navigateTo('finace_accounting')">💰 บัญชีและการเงิน</a>
+
+      <!-- เมนูจัดการบัญชีผู้ใช้ (Admin เท่านั้น) — แสดงผลแบบโดดเด่น -->
+      <a class="tij-nav-item admin-nav-special admin-only" onclick="navigateTo('user_management')" title="จัดการบัญชีผู้ใช้และสิทธิ์การเข้าถึง">
+        🛡️ จัดการผู้ใช้
+      </a>
+
+      <!-- เมนูของ Driver หรือ Admin -->
+      <a class="tij-nav-item driver-only" onclick="navigateTo('van_driver')">🚐 หน้าพนักงานขับรถ</a>
+    </div>
+
+    <!-- ฝั่งขวา: แสดงชื่อและบทบาทของผู้ใช้งานล็อกอิน -->
+    <div class="tij-nav-user">
+      <div id="roleBadge" class="tij-role-badge" style="background: #f8fafc; color: #64748b;">
+        👤 กำลังยืนยันสิทธิ์...
+      </div>
+    </div>
+
+  </div>
+</nav>
+
+<!-- Master Loader โหลดหน้าย่อย -->
+<div id="masterLoader" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); z-index: 9999; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(3px);">
+  <div style="border: 4px solid #f3f3f3; border-top: 4px solid #f97316; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 10px;"></div>
+  <span style="font-family: 'Prompt', sans-serif; font-size: 0.95rem; color: #475569; font-weight: 500;">กำลังดำเนินการเปลี่ยนหน้า...</span>
+</div>
+
+<style>
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+</style>
+
+<script>
+// สคริปต์สั้นรันตัวเองเพื่อตรวจสอบและเปลี่ยนสี Badge ตามสิทธิ์ทันที
+(function() {
+  if (typeof google !== 'undefined' && google.script) {
+    google.script.run
+      .withSuccessHandler(function(profile) {
+        var badge = document.getElementById('roleBadge');
+        if (badge) {
+          var displayRole = profile.role === 'admin' ? '🛡️ แอดมิน' : (profile.role === 'driver' ? '🚐 คนขับรถ' : '👤 ไม่มีสิทธิ์เข้าถึง');
+          badge.textContent = profile.name + " (" + displayRole + ")";
+          
+          if (profile.role === 'admin') {
+            badge.style.background = '#fff7ed';
+            badge.style.color = '#c2410c';
+            badge.style.borderColor = '#fdba74';
+          } else if (profile.role === 'driver') {
+            badge.style.background = '#f0fdf4';
+            badge.style.color = '#15803d';
+            badge.style.borderColor = '#bbf7d0';
+          } else {
+            // บัญชีโดนปฏิเสธ (unauthorized)
+            badge.style.background = '#fef2f2';
+            badge.style.color = '#b91c1c';
+            badge.style.borderColor = '#fca5a5';
+          }
+        }
+      })
+      .withFailureHandler(function() {
+        var badge = document.getElementById('roleBadge');
+        if (badge) {
+          badge.textContent = '❌ ไม่สามารถยืนยันสิทธิ์ได้';
+          badge.style.background = '#fef2f2';
+          badge.style.color = '#b91c1c';
+        }
+      })
+      .getUserProfile();
+  }
+})();
+</script>
