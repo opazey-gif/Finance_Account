@@ -1,0 +1,2315 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <!-- Include Common CSS (Tailwind + Utilities) -->
+  <?!= include('Common_CSS_TW.html'); ?>
+  <!-- Vue.js (not included in Common_JS) -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+  <style>
+    /* Page-specific overrides or custom styles can go here */
+  </style>
+</head>
+<body>
+  <div id="app" v-cloak>
+
+    <!-- Global Loader -->
+    <div v-if="globalLoading" class="fixed inset-0 glass z-50 flex flex-col items-center justify-center">
+      <div class="loader mb-4"></div>
+      <p class="text-tijBlue font-semibold animate-pulse">{{ loadingMessage }}</p>
+    </div>
+
+    <!-- Header & Nav -->
+    <header class="bg-white shadow-md border-b-4 border-tijOrange sticky top-0 z-30">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-wrap md:flex-nowrap justify-between items-center py-3 md:py-0 md:h-16">
+          <div class="flex items-center space-x-3 w-full md:w-auto mb-3 md:mb-0 shrink-0">
+            <div class="w-10 h-10 bg-tijBlue rounded-xl flex items-center justify-center text-white shadow"><i class="fa-solid fa-chart-line text-xl"></i></div>
+            <div>
+              <h1 class="text-xl font-bold text-gray-800 leading-tight">Finance Dashboard</h1>
+              <p class="text-xs text-tijOrange font-semibold tracking-wide">ระบบจัดการรายได้-จ่าย</p>
+            </div>
+          </div>
+          
+          <nav class="flex w-full md:w-auto md:flex-1 md:justify-center overflow-x-auto custom-scrollbar space-x-2 items-end pb-2 md:pb-0 px-2 md:px-4">
+            <button onclick="navigateTo('main')" class="nav-btn whitespace-nowrap px-3 py-2 md:py-4">
+              <i class="fa-solid fa-house mr-2"></i>หน้าหลัก</button>
+            <button v-if="hasPerm('viewDash')" @click="switchTab('dashboard')" :class="{'nav-active': currentTab === 'dashboard'}" class="nav-btn whitespace-nowrap px-3 py-2 md:py-4"><i class="fa-solid fa-chart-pie mr-2"></i>ภาพรวม</button>
+            <button v-if="hasPerm('createEntry')" @click="switchTab('entry')" :class="{'nav-active': currentTab === 'entry'}" class="nav-btn whitespace-nowrap px-3 py-2 md:py-4"><i class="fa-solid fa-file-circle-plus mr-2"></i>สร้างรายการ</button>
+            <button v-if="hasPerm('viewLoan')" @click="switchTab('loan')" :class="{'nav-active': currentTab === 'loan'}" class="nav-btn whitespace-nowrap px-3 py-2 md:py-4 text-green-600 hover:text-green-700"><i class="fa-solid fa-hand-holding-dollar mr-2"></i>เงินกู้ยืม / เบิกเงิน</button>
+            <button v-if="hasPerm('viewList')" @click="switchTab('list')" :class="{'nav-active': currentTab === 'list'}" class="nav-btn whitespace-nowrap px-3 py-2 md:py-4"><i class="fa-solid fa-table-list mr-2"></i>ฐานข้อมูล</button>
+            <button v-if="hasPerm('accessSettings')" @click="switchTab('admin')" :class="{'nav-active': currentTab === 'admin'}" class="nav-btn whitespace-nowrap px-3 py-2 md:py-4"><i class="fa-solid fa-gear mr-2"></i>ตั้งค่าระบบ</button>
+            <button v-if="hasPerm('createEntry') || hasPerm('viewList')" @click="switchTab('guide')" :class="{'nav-active': currentTab === 'guide'}" class="nav-btn whitespace-nowrap px-3 py-2 md:py-4"><i class="fa-solid fa-book-open-reader mr-2"></i>คู่มือ</button>
+          </nav>
+
+          <div class="hidden md:flex items-center space-x-4 shrink-0">
+            <div class="text-right">
+              <span class="block text-sm font-bold text-gray-700">{{ user.email || 'Guest' }}</span>
+              <span class="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm">{{ user.role || '-' }}</span>
+            </div>
+            <a v-if="appUrl" :href="'https://accounts.google.com/AccountChooser?continue=' + appUrl" target="_top" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-tijOrange transition cursor-pointer" title="สลับบัญชี"><i class="fa-solid fa-right-from-bracket"></i></a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
+      
+      <!-- ================= Tab: คู่มือ (Guide) ================= -->
+      <section v-if="currentTab === 'guide'" class="max-w-5xl mx-auto space-y-6">
+        <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 animate-fade-in">
+          <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-blue-50 text-tijBlue rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-book-open-reader text-3xl"></i></div>
+            <h2 class="text-2xl font-bold text-gray-800">คู่มือการใช้งานระบบ (เบื้องต้น)</h2>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="bg-gray-50 p-6 rounded-xl border border-gray-200">
+              <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center"><i class="fa-solid fa-1 text-tijOrange text-2xl mr-3"></i> สำหรับพนักงาน / ฝ่ายการเงิน</h3>
+              <ul class="space-y-4 text-sm text-gray-600">
+                <li class="flex items-start"><i class="fa-solid fa-circle-check text-green-500 mt-1 mr-3"></i><div><strong>ไปที่เมนู "สร้างรายการ"</strong> เพื่อเริ่มบันทึกข้อมูลจากใบเสร็จรับเงิน/จ่ายเงิน</div></li>
+                <li class="flex items-start"><i class="fa-solid fa-circle-check text-green-500 mt-1 mr-3"></i><div><strong>ระบบ Auto-fill ลูกค้า</strong> เมื่อพิมพ์ชื่อลูกค้า ระบบจะเติมเลขภาษีและที่อยู่ให้อัตโนมัติ (และกดอัปเดตได้หากมีการเปลี่ยนแปลง)</div></li>
+                <li class="flex items-start"><i class="fa-solid fa-circle-check text-green-500 mt-1 mr-3"></i><div><strong>กดบันทึก</strong> รายการจะไปปรากฏในหน้า "รายการทั้งหมด" โดยจะขึ้นป้ายสีแดงว่า <span class="bg-red-100 text-red-600 px-2 py-0.5 rounded text-[10px]">ยังไม่จัดหมวดหมู่</span> ทิ้งไว้ให้ฝ่ายบัญชีมาจัดการต่อ</div></li>
+              </ul>
+            </div>
+
+            <div class="bg-blue-50 p-6 rounded-xl border border-blue-100">
+              <h3 class="text-lg font-bold text-tijBlue mb-4 flex items-center"><i class="fa-solid fa-2 text-tijBlue text-2xl mr-3"></i> สำหรับฝ่ายบัญชี</h3>
+              <ul class="space-y-4 text-sm text-gray-700">
+                <li class="flex items-start"><i class="fa-solid fa-arrow-right text-tijBlue mt-1 mr-3"></i><div><strong>ไปที่เมนู "รายการทั้งหมด"</strong> และกด <strong>แก้ไข</strong> เพื่อทำการเลือก <em>หมวดหมู่ทางบัญชี</em> ให้ถูกต้อง</div></li>
+                <li class="flex items-start"><i class="fa-solid fa-arrow-right text-tijBlue mt-1 mr-3"></i><div><strong>การออกเอกสาร PDF</strong> กดไอคอนพิมพ์ (<i class="fa-solid fa-print text-tijBlue"></i>) เลือกแบบฟอร์ม เพื่อนำไปพิมพ์ได้ทันที</div></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= Tab: Dashboard ================= -->
+      <section v-if="currentTab === 'dashboard'" class="space-y-6">
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-wrap items-center justify-between gap-4">
+          <h2 class="text-lg font-bold text-gray-800"><i class="fa-solid fa-chart-pie text-tijBlue mr-2"></i>สรุปภาพรวมทางการเงิน</h2>
+          <div class="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
+            <input type="date" v-model="dashStartDate" @change="renderCharts" class="p-1.5 text-xs bg-transparent border-0 text-gray-600 font-semibold cursor-pointer outline-none focus:ring-2 focus:ring-tijBlue">
+            <span class="text-gray-300">-</span>
+            <input type="date" v-model="dashEndDate" @change="renderCharts" class="p-1.5 text-xs bg-transparent border-0 text-gray-600 font-semibold cursor-pointer outline-none focus:ring-2 focus:ring-tijBlue">
+            <button @click="dashStartDate=''; dashEndDate=''; renderCharts()" class="text-[10px] px-2 py-1 bg-white border shadow-sm hover:bg-gray-100 rounded font-bold">ดูทั้งหมด</button>
+          </div>
+        </div>
+
+        <!-- Metric Cards (สีสันสดใสแบบเดิม) -->
+        <div v-if="globalLayout.cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
+          <div class="p-6 rounded-2xl shadow-sm card-income relative overflow-hidden group hover:shadow-md transition">
+            <i class="fa-solid fa-arrow-trend-up absolute right-4 bottom-4 text-5xl text-blue-100 opacity-50 transition-transform group-hover:scale-110"></i>
+            <p class="text-sm text-gray-600 font-semibold mb-2">รายรับรวม</p>
+            <h3 class="text-2xl lg:text-3xl font-bold text-tijBlue">฿ {{ summaryData.income | formatNumber }}</h3>
+          </div>
+          <div class="p-6 rounded-2xl shadow-sm card-expense relative overflow-hidden group hover:shadow-md transition">
+            <i class="fa-solid fa-arrow-trend-down absolute right-4 bottom-4 text-5xl text-orange-100 opacity-50 transition-transform group-hover:scale-110"></i>
+            <p class="text-sm text-gray-600 font-semibold mb-2">รายจ่ายรวม</p>
+            <h3 class="text-2xl lg:text-3xl font-bold text-tijOrange">฿ {{ summaryData.expense | formatNumber }}</h3>
+          </div>
+          <div class="p-6 rounded-2xl shadow-sm card-net relative overflow-hidden group hover:shadow-md transition">
+            <i class="fa-solid fa-scale-balanced absolute right-4 bottom-4 text-5xl text-green-100 opacity-50 transition-transform group-hover:scale-110"></i>
+            <p class="text-sm text-gray-600 font-semibold mb-2">ยอดคงเหลือ (Net)</p>
+            <h3 class="text-2xl lg:text-3xl font-bold" :class="(summaryData.income - summaryData.expense) >= 0 ? 'text-green-600' : 'text-red-500'">
+              ฿ {{ (summaryData.income - summaryData.expense) | formatNumber }}
+            </h3>
+          </div>
+          <div class="p-6 rounded-2xl shadow-sm card-total relative overflow-hidden group hover:shadow-md transition">
+            <i class="fa-solid fa-file-invoice absolute right-4 bottom-4 text-5xl text-yellow-100 opacity-50 transition-transform group-hover:scale-110"></i>
+            <p class="text-sm text-gray-600 font-semibold mb-2">จำนวนรายการ</p>
+            <h3 class="text-2xl lg:text-3xl font-bold text-yellow-600">{{ dashboardTransactions.length }} <span class="text-lg font-normal">รายการ</span></h3>
+          </div>
+        </div>
+        
+        <!-- Cash Flow Bar -->
+        <div v-if="globalLayout.cashFlow" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 animate-fade-in">
+           <h2 class="text-lg font-bold text-gray-800 mb-4"><i class="fa-solid fa-money-bill-transfer text-green-500 mr-2"></i>กระแสเงินสด (Cash Flow Ratio)</h2>
+           <div class="relative w-full h-8 bg-gray-100 rounded-full overflow-hidden flex shadow-inner">
+              <div v-if="summaryData.income > 0 || summaryData.expense > 0" 
+                   class="h-full bg-tijBlue flex items-center px-3 text-white text-xs font-bold transition-all duration-1000" 
+                   :style="{ width: ((summaryData.income / (summaryData.income + summaryData.expense)) * 100) + '%' }">
+                   {{ ((summaryData.income / (summaryData.income + summaryData.expense)) * 100).toFixed(0) }}%
+              </div>
+              <div v-if="summaryData.income > 0 || summaryData.expense > 0" 
+                   class="h-full bg-tijOrange flex items-center justify-end px-3 text-white text-xs font-bold transition-all duration-1000" 
+                   :style="{ width: ((summaryData.expense / (summaryData.income + summaryData.expense)) * 100) + '%' }">
+                   {{ ((summaryData.expense / (summaryData.income + summaryData.expense)) * 100).toFixed(0) }}%
+              </div>
+           </div>
+           <div class="flex justify-between text-xs font-semibold mt-2">
+             <span class="text-tijBlue">รายรับ (Income)</span>
+             <span class="text-tijOrange">รายจ่าย (Expense)</span>
+           </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div v-if="globalLayout.trend" class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 w-full animate-fade-in">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-lg font-bold text-gray-800"><i class="fa-solid fa-chart-line text-tijBlue mr-2"></i>แนวโน้มการเงิน (Trend)</h2>
+            </div>
+            <div class="relative h-[300px] md:h-[350px] w-full"><canvas id="trendChart"></canvas></div>
+          </div>
+          <div v-if="globalLayout.pie" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col w-full animate-fade-in" :class="!globalLayout.trend ? 'lg:col-span-3' : ''">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-lg font-bold text-gray-800"><i class="fa-solid fa-chart-pie text-tijOrange mr-2"></i>ที่มาของเงิน</h2>
+              <select v-model="dashBreakdownType" @change="renderCharts" class="text-sm p-1.5 border rounded-lg focus:ring-2 focus:ring-tijOrange outline-none bg-gray-50">
+                <option value="รายรับ">ฝั่งรายรับ</option><option value="รายจ่าย">ฝั่งรายจ่าย</option>
+              </select>
+            </div>
+            <div class="relative h-[300px] md:h-[350px] w-full"><canvas id="pieChart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Top Lists -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div v-if="globalLayout.recent" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-fade-in" :class="(!globalLayout.topExpense && !globalLayout.topIncome) ? 'md:col-span-3' : ''">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-lg font-bold text-gray-800"><i class="fa-solid fa-clock-rotate-left text-tijBlue mr-2"></i>5 รายการล่าสุด</h2>
+              <button v-if="hasPerm('viewList')" @click="switchTab('list')" class="text-xs text-tijBlue hover:underline">ดูทั้งหมด</button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm">
+                <thead class="bg-gray-50 text-gray-500">
+                  <tr><th class="p-3 rounded-tl-lg">วันที่</th><th class="p-3">รายการ</th><th class="p-3 text-right rounded-tr-lg">จำนวนเงิน</th></tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  <tr v-for="t in recentTransactions" :key="t[0]" class="hover:bg-gray-50">
+                    <td class="p-3 text-gray-500">{{ formatThaiDateFull(t[1]) }}</td>
+                    <td class="p-3 truncate max-w-[120px] font-medium">{{ t[13] || t[10] || t[4] }}</td>
+                    <td class="p-3 text-right font-bold" :class="t[7] === 'รายจ่าย' ? 'text-red-500' : 'text-tijBlue'">{{ t[7] === 'รายจ่าย' ? '-' : '' }}{{ t[11] | formatNumber }}</td>
+                  </tr>
+                  <tr v-if="recentTransactions.length === 0"><td colspan="3" class="p-4 text-center text-gray-400">ไม่มีข้อมูล</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div v-if="globalLayout.topExpense" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 animate-fade-in" :class="(!globalLayout.recent && !globalLayout.topIncome) ? 'md:col-span-3' : ''">
+             <div class="flex justify-between items-center mb-4">
+               <h2 class="text-lg font-bold text-gray-800"><i class="fa-solid fa-arrow-down-short-wide text-tijOrange mr-2"></i>รายจ่ายสูงสุด</h2>
+             </div>
+             <div class="space-y-4">
+               <div v-for="(t, index) in topExpenses" :key="index" class="flex items-center justify-between">
+                 <div class="flex items-center space-x-3 overflow-hidden">
+                   <div class="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-sm shrink-0">{{ index + 1 }}</div>
+                   <div class="truncate">
+                     <p class="text-sm font-bold text-gray-800 truncate">{{ t[9] !== '-' ? t[9] : 'รายจ่าย (ไม่ระบุ)' }}</p>
+                     <p class="text-xs text-gray-500 truncate">{{ t[8] !== '-' ? t[8] : 'ยังไม่จัดหมวดหมู่บัญชี' }}</p>
+                   </div>
+                 </div>
+                 <div class="font-bold text-red-500 shrink-0 ml-4">฿ {{ t[11] | formatNumber }}</div>
+               </div>
+               <div v-if="topExpenses.length === 0" class="text-center text-gray-400 py-4">ไม่มีข้อมูลรายจ่าย</div>
+             </div>
+          </div>
+
+          <div v-if="globalLayout.topIncome" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 animate-fade-in" :class="(!globalLayout.recent && !globalLayout.topExpense) ? 'md:col-span-3' : ''">
+             <div class="flex justify-between items-center mb-4">
+               <h2 class="text-lg font-bold text-gray-800"><i class="fa-solid fa-arrow-up-short-wide text-tijBlue mr-2"></i>รายรับสูงสุด</h2>
+             </div>
+             <div class="space-y-4">
+               <div v-for="(t, index) in topIncomes" :key="index" class="flex items-center justify-between">
+                 <div class="flex items-center space-x-3 overflow-hidden">
+                   <div class="w-8 h-8 rounded-full bg-blue-100 text-tijBlue flex items-center justify-center font-bold text-sm shrink-0">{{ index + 1 }}</div>
+                   <div class="truncate">
+                     <p class="text-sm font-bold text-gray-800 truncate">{{ t[9] !== '-' ? t[9] : 'รายรับ (ไม่ระบุ)' }}</p>
+                     <p class="text-xs text-gray-500 truncate">{{ t[8] !== '-' ? t[8] : 'ยังไม่จัดหมวดหมู่บัญชี' }}</p>
+                   </div>
+                 </div>
+                 <div class="font-bold text-tijBlue shrink-0 ml-4">฿ {{ t[11] | formatNumber }}</div>
+               </div>
+               <div v-if="topIncomes.length === 0" class="text-center text-gray-400 py-4">ไม่มีข้อมูลรายรับ</div>
+             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Datalist ซ่อนสำหรับ Auto-fill -->
+      <datalist id="customerList"><option v-for="c in uniqueCustomers" :key="c" :value="c"></option></datalist>
+
+      <!-- ================= Tab: สร้างรายการ ================= -->
+      <section v-if="currentTab === 'entry' && hasPerm('createEntry')" class="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow border-t-4 border-tijBlue animate-fade-in">
+        <div class="flex items-center justify-between mb-6 border-b pb-4">
+          <h2 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-file-circle-plus text-tijOrange mr-2"></i>บันทึกรายการรับ-จ่าย</h2>
+          <span class="text-xs text-tijBlue bg-blue-50 px-3 py-1 rounded-full font-semibold border border-blue-100">ฟอร์มกรอกข้อมูล</span>
+        </div>
+        
+        <form @submit.prevent="submitBasicForm" class="space-y-6">
+          
+          <div class="bg-blue-50 p-5 rounded-xl flex flex-wrap items-center gap-6 border border-blue-100">
+            <div class="flex-1 min-w-[200px] relative">
+               <label class="block text-sm font-bold text-tijBlue mb-2"><i class="fa-regular fa-calendar-days mr-1"></i>วันที่ตามใบเสร็จ</label>
+               <div class="relative">
+                 <input type="date" v-model="form.transactionDate" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 date-overlay" @click="$event.target.showPicker && $event.target.showPicker()">
+                 <input type="text" :value="formatThaiDateFull(form.transactionDate)" readonly class="w-full p-2.5 border-0 shadow-sm rounded-lg bg-white text-gray-700 pointer-events-none font-medium">
+               </div>
+            </div>
+             <div>
+               <label class="block text-xs font-semibold text-gray-600 mb-1">เล่มที่</label>
+               <input type="number" v-model="form.bookNo" :disabled="!form.isManual" class="w-20 p-2.5 border border-gray-300 rounded-lg focus:border-tijBlue focus:ring-tijBlue disabled:bg-gray-200 text-center font-mono font-bold shadow-sm">
+             </div>
+             <div>
+               <label class="block text-xs font-semibold text-gray-600 mb-1">เลขที่</label>
+               <input type="number" v-model="form.receiptNo" :disabled="!form.isManual" class="w-24 p-2.5 border border-gray-300 rounded-lg focus:border-tijBlue focus:ring-tijBlue disabled:bg-gray-200 text-center font-mono font-bold shadow-sm">
+             </div>
+             <div class="pt-5 flex items-center bg-white px-3 py-2 rounded-lg border shadow-sm">
+               <input type="checkbox" v-model="form.isManual" id="manual" class="w-4 h-4 text-tijOrange rounded cursor-pointer focus:ring-tijOrange">
+               <label for="manual" class="ml-2 text-sm text-gray-700 font-medium cursor-pointer">กำหนดเลขเอง</label>
+             </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1 flex justify-between items-center">
+                <span>รับเงินจาก / จ่ายให้ <span class="text-red-500">*</span></span>
+                <span v-if="isAutoFilled" class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded animate-pulse"><i class="fa-solid fa-bolt mr-1"></i>ดึงข้อมูลอัตโนมัติแล้ว</span>
+              </label>
+              <input type="text" v-model="form.payerName" list="customerList" @change="onPayerSelect" required placeholder="ค้นหาจากฐานข้อมูลลูกค้า..." class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-tijBlue text-sm transition">
+              
+              <div v-if="customerUpdatePrompt === 'new'" class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg animate-fade-in flex justify-between items-center">
+                <span class="text-xs text-blue-800"><i class="fa-solid fa-info-circle mr-1"></i>ลูกค้าใหม่ในระบบ</span>
+                <button type="button" @click="quickSaveCustomer('new')" class="px-3 py-1.5 bg-tijBlue text-white text-xs font-bold rounded shadow hover:bg-blue-600 transition">บันทึกช่วยจำ</button>
+              </div>
+              <div v-if="customerUpdatePrompt === 'update'" class="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg animate-fade-in flex justify-between items-center">
+                <span class="text-xs text-yellow-800"><i class="fa-solid fa-triangle-exclamation mr-1"></i>ข้อมูลมีการเปลี่ยนแปลง</span>
+                <button type="button" @click="quickSaveCustomer('update')" class="px-3 py-1.5 bg-yellow-500 text-white text-xs font-bold rounded shadow hover:bg-yellow-600 transition">อัปเดตระบบ</button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">เลขประจำตัวผู้เสียภาษี (ถ้ามี)</label>
+              <input type="text" v-model="form.taxId" maxlength="13" placeholder="13 หลัก" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-tijBlue transition font-mono">
+            </div>
+            
+            <div class="md:col-span-2">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">รายละเอียดที่อยู่ผู้ติดต่อ</label>
+              <div class="bg-blue-50 border border-blue-200 text-blue-800 text-xs p-3 rounded-lg flex items-start mb-2">
+                 <i class="fa-solid fa-lightbulb mt-0.5 mr-2 text-yellow-500"></i>
+                 <p><strong>คำแนะนำ:</strong> แนะนำให้กรอกข้อมูลที่อยู่ให้ครบถ้วนทุกช่อง เพื่อความสมบูรณ์ในการพิมพ์เอกสาร (หากไม่มีข้อมูล สามารถเว้นว่างไว้ได้ครับ)</p>
+              </div>
+              <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="md:col-span-2">
+                   <label class="text-xs text-gray-500 block mb-1">บ้านเลขที่ / หมู่ / อาคาร / ซอย / ถนน</label>
+                   <input type="text" v-model="addrHelper.line1" placeholder="เช่น 123/45 ซอยสุขใจ ถนนลาดพร้าว" class="w-full p-2.5 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-tijBlue">
+                </div>
+                <div>
+                   <label class="text-xs text-gray-500 block mb-1">แขวง / ตำบล</label>
+                   <input type="text" v-model="addrHelper.subDistrict" placeholder="แขวง/ตำบล" class="w-full p-2.5 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-tijBlue">
+                </div>
+                <div>
+                   <label class="text-xs text-gray-500 block mb-1">เขต / อำเภอ</label>
+                   <input type="text" v-model="addrHelper.district" placeholder="เขต/อำเภอ" class="w-full p-2.5 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-tijBlue">
+                </div>
+                <div>
+                   <label class="text-xs text-gray-500 block mb-1">จังหวัด</label>
+                   <input type="text" v-model="addrHelper.province" placeholder="จังหวัด" class="w-full p-2.5 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-tijBlue">
+                </div>
+                <div>
+                   <label class="text-xs text-gray-500 block mb-1">รหัสไปรษณีย์</label>
+                   <input type="text" v-model="addrHelper.zip" placeholder="10000" class="w-full p-2.5 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-tijBlue font-mono">
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">ประเภทรายการ <span class="text-red-500">*</span></label>
+              <select v-model="form.category" required class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-tijBlue">
+                <option value="รายรับ">รายรับ (บร.)</option>
+                <option value="รายจ่าย">รายจ่าย (บค.)</option>
+              </select>
+            </div>
+            
+            <div class="flex gap-4">
+              <div class="flex-1">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">จำนวนเงิน (บาท) <span class="text-red-500">*</span></label>
+                <input type="number" step="0.01" v-model="form.amount" required class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-tijBlue font-bold text-tijBlue text-lg">
+              </div>
+              <div class="flex-1">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">วิธีชำระ</label>
+                <select v-model="form.paymentMethod" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-tijBlue">
+                  <option>โอนผ่านธนาคาร</option><option>เงินสด</option><option>เช็ค</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">เป็นค่า (รายละเอียดงาน)</label>
+            <textarea v-model="form.description" rows="2" placeholder="ใส่หมายเหตุ หรือรายละเอียดงานที่นี่..." class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-tijBlue"></textarea>
+          </div>
+
+          <div class="flex justify-end space-x-4 pt-6 border-t border-gray-100">
+            <button type="button" @click="resetForm" class="px-6 py-2.5 bg-gray-100 text-gray-600 font-semibold rounded-xl hover:bg-gray-200 transition">ล้างฟอร์ม</button>
+            <button type="submit" class="px-8 py-2.5 bg-gradient-to-r from-tijOrange to-orange-500 hover:from-orange-600 hover:to-orange-500 text-white font-bold rounded-xl shadow-lg transform hover:-translate-y-0.5 transition flex items-center">
+              <i class="fa-solid fa-save mr-2"></i> บันทึกเข้าระบบ
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- ================= Tab: รายการทั้งหมด (รวมถังขยะ) ================= -->
+      <section v-if="currentTab === 'list' && hasPerm('viewList')" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-fade-in">
+        
+        <!-- Toggle Menu รายการปกติ / ถังขยะ -->
+        <div class="bg-gray-100 p-2 flex items-center justify-between border-b border-gray-200">
+           <div class="flex space-x-1">
+              <button @click="currentListView = 'active'" :class="currentListView === 'active' ? 'bg-white shadow text-tijBlue' : 'text-gray-500 hover:bg-gray-200'" class="px-5 py-2 rounded-lg font-bold text-sm transition"><i class="fa-solid fa-list mr-2"></i> รายการปกติ</button>
+              <button v-if="hasPerm('manageTrash')" @click="currentListView = 'trash'" :class="currentListView === 'trash' ? 'bg-white shadow text-red-500' : 'text-gray-500 hover:bg-gray-200'" class="px-5 py-2 rounded-lg font-bold text-sm transition"><i class="fa-solid fa-trash-can mr-2"></i> ถังขยะ <span v-if="trashedTransactions.length" class="ml-1 bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs border border-red-200">{{trashedTransactions.length}}</span></button>
+           </div>
+        </div>
+
+        <!-- หน้าจอ: รายการปกติ -->
+        <div v-if="currentListView === 'active'" class="animate-fade-in">
+          <div class="bg-gray-50/50 p-5 border-b flex flex-wrap gap-4 items-end">
+            <div class="flex-1 min-w-[200px]">
+              <label class="text-xs font-semibold text-gray-500 mb-1 block">ค้นหาข้อมูล</label>
+              <div class="relative">
+                <i class="fa-solid fa-search absolute left-3 top-3 text-gray-400"></i>
+                <input type="text" v-model="filters.search" placeholder="ชื่อลูกค้า, เลขที่, ที่อยู่..." class="w-full pl-10 p-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-tijBlue outline-none">
+              </div>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-gray-500 mb-1 block">ประเภท</label>
+              <select v-model="filters.category" class="w-32 p-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-tijBlue">
+                <option value="">ทั้งหมด</option><option value="รายรับ">รายรับ</option><option value="รายจ่าย">รายจ่าย</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-gray-500 mb-1 block">ตั้งแต่วันที่</label>
+              <div class="relative">
+                <input type="date" v-model="filters.startDate" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 date-overlay" @click="$event.target.showPicker && $event.target.showPicker()">
+                <input type="text" :value="formatThaiDateFull(filters.startDate)" readonly placeholder="ดด/วว/ปปปป" class="w-full p-2 bg-white border border-gray-200 rounded-lg outline-none pointer-events-none text-sm">
+              </div>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-gray-500 mb-1 block">ถึงวันที่</label>
+              <div class="relative">
+                <input type="date" v-model="filters.endDate" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 date-overlay" @click="$event.target.showPicker && $event.target.showPicker()">
+                <input type="text" :value="formatThaiDateFull(filters.endDate)" readonly placeholder="ดด/วว/ปปปป" class="w-full p-2 bg-white border border-gray-200 rounded-lg outline-none pointer-events-none text-sm">
+              </div>
+            </div>
+            <div class="ml-auto">
+              <button @click="exportData" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-lg shadow transition flex items-center">
+                <i class="fa-solid fa-file-excel mr-2"></i> ดาวน์โหลดตาราง (CSV)
+              </button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto custom-scrollbar min-h-[400px]">
+            <table class="w-full text-left whitespace-nowrap">
+              <thead class="bg-gradient-to-r from-tijBlue to-blue-500 text-white text-sm">
+                <tr>
+                  <th @click="sortByCol(17)" class="p-4 font-semibold cursor-pointer hover:bg-blue-600 transition select-none">วันที่ (ใบเสร็จ/บันทึก) <i class="fa-solid fa-sort ml-1 opacity-70"></i></th>
+                  <th @click="sortByCol('docNo')" class="p-4 font-semibold cursor-pointer hover:bg-blue-600 transition select-none">เลขที่เอกสาร <i class="fa-solid fa-sort ml-1 opacity-70"></i></th>
+                  <th @click="sortByCol(4)" class="p-4 font-semibold cursor-pointer hover:bg-blue-600 transition select-none">รับ/จ่ายกับ <i class="fa-solid fa-sort ml-1 opacity-70"></i></th>
+                  <th @click="sortByCol(7)" class="p-4 font-semibold cursor-pointer hover:bg-blue-600 transition select-none">รายการ/หมวดหมู่ <i class="fa-solid fa-sort ml-1 opacity-70"></i></th>
+                  <th @click="sortByCol(11)" class="p-4 font-semibold text-right cursor-pointer hover:bg-blue-600 transition select-none">จำนวนเงิน (฿) <i class="fa-solid fa-sort ml-1 opacity-70"></i></th>
+                  <th class="p-4 font-semibold text-center">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody class="text-sm divide-y divide-gray-100">
+                <tr v-for="t in filteredTransactions" :key="t[0]" class="hover:bg-blue-50/50 transition">
+                  <td class="p-4">
+                    <div class="text-gray-800 font-medium">{{ formatThaiDateFull(t[1]) }}</div>
+                    <div class="text-[10px] text-gray-500 mt-0.5"><i class="fa-regular fa-clock mr-1"></i>บันทึก: {{ (t[17] || t[1]) | formatDateTime }}</div>
+                  </td>
+                  <td class="p-4 font-mono text-gray-600 font-medium"><span class="bg-gray-100 px-2 py-1 rounded border border-gray-200">{{ formatDocNo(t[7], t[2], t[3]) }}</span></td>
+                  <td class="p-4 font-medium text-gray-800">{{ t[4] }}</td>
+                  <td class="p-4">
+                    <div class="text-gray-800 truncate max-w-[200px] font-medium" :title="t[13] || t[10] || '-'">{{ t[13] || t[10] || '-' }}</div>
+                    <div class="mt-1 flex flex-wrap gap-1">
+                      <span v-if="t[8] === '-' || t[8] === ''" class="inline-flex items-center text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full border border-red-200 font-semibold">
+                        <i class="fa-solid fa-circle-exclamation mr-1"></i>ยังไม่จัดหมวดหมู่
+                      </span>
+                      <span v-else class="inline-flex items-center text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200 font-semibold">
+                        <i class="fa-solid fa-check-circle mr-1"></i>จัดหมวดแล้ว
+                      </span>
+                      <span v-if="t[16] > 1" class="inline-flex items-center bg-yellow-100 text-yellow-700 text-[10px] px-2 py-0.5 rounded-full border border-yellow-200 font-semibold">
+                        <i class="fa-solid fa-pen-clip mr-1"></i>ถูกแก้ไข (v.{{t[16]}})
+                      </span>
+                    </div>
+                  </td>
+                  <td class="p-4 text-right font-bold text-base" :class="t[7] === 'รายจ่าย' ? 'text-tijOrange' : 'text-tijBlue'">
+                    {{ t[7] === 'รายจ่าย' ? '-' : '' }}{{ t[11] | formatNumber }}
+                  </td>
+                  <td class="p-4 text-center space-x-2">
+                    <button @click="openViewModal(t)" title="ดูรายละเอียด" class="text-gray-400 hover:text-green-500 transition w-8 h-8 rounded hover:bg-green-50"><i class="fa-solid fa-eye"></i></button>
+                    <button @click="openPrintModal(t)" title="พิมพ์ PDF" class="text-gray-400 hover:text-tijBlue transition w-8 h-8 rounded hover:bg-blue-50"><i class="fa-solid fa-print"></i></button>
+                    <!-- เปิดให้คลิกแก้ไขได้ถ้ามีสิทธิ์ createEntry (แก้บั๊กกดไม่ได้) -->
+                    <button v-if="hasPerm('createEntry')" @click="openEditModal(t)" title="แก้ไข/จัดหมวด" class="text-gray-400 hover:text-tijOrange transition w-8 h-8 rounded hover:bg-orange-50"><i class="fa-solid fa-pen-to-square"></i></button>
+                    <button v-if="hasPerm('manageTrash')" @click="deleteItem(t[0])" title="ลบลงถังขยะ" class="text-gray-400 hover:text-red-500 transition w-8 h-8 rounded hover:bg-red-50"><i class="fa-solid fa-trash"></i></button>
+                  </td>
+                </tr>
+                <tr v-if="filteredTransactions.length === 0">
+                  <td colspan="6" class="p-10 text-center text-gray-400">
+                    <div class="w-16 h-16 mx-auto bg-gray-50 rounded-full flex items-center justify-center mb-3"><i class="fa-solid fa-folder-open text-2xl"></i></div>
+                    <p class="font-bold">ไม่พบรายการ</p>
+                    <p class="text-xs mt-1">ลองเปลี่ยนเงื่อนไขการค้นหาดูอีกครั้ง</p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <!-- หน้าจอ: ถังขยะ (เพิ่มตัวนับเวลาถอยหลัง) -->
+        <div v-if="currentListView === 'trash'" class="animate-fade-in">
+          <div class="bg-red-50 p-4 border-b border-red-100 flex items-center justify-between text-sm">
+            <div><i class="fa-solid fa-circle-info text-red-500 mr-2"></i> ข้อมูลในถังขยะจะถูก <strong>ลบอย่างถาวรโดยอัตโนมัติ</strong> เมื่อครบ 7 วัน</div>
+          </div>
+          <div class="overflow-x-auto min-h-[400px]">
+            <table class="w-full text-left text-sm whitespace-nowrap">
+              <thead class="bg-gray-50 text-gray-600 border-b">
+                <tr><th class="p-4">ลบเมื่อ</th><th class="p-4">เอกสาร</th><th class="p-4">รายการ</th><th class="p-4">ยอดเงิน</th><th class="p-4 text-center">เวลาที่เหลือ</th><th class="p-4 text-center">จัดการ</th></tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr v-for="t in trashedTransactions" :key="t[0]" class="hover:bg-red-50/50 transition">
+                  <td class="p-4 text-xs text-gray-500 font-bold">{{ formatThaiDateFull(t[17]) }}</td>
+                  <td class="p-4 font-mono text-gray-500 text-xs font-bold"><span class="bg-white px-2 py-1 border rounded">{{ formatDocNo(t[7], t[2], t[3]) }}</span></td>
+                  <td class="p-4 text-gray-600 font-medium">{{ t[4] }}</td>
+                  <td class="p-4 font-bold text-gray-500">฿ {{ t[11] | formatNumber }}</td>
+                  <td class="p-4 text-center">
+                    <span class="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs font-bold border border-orange-200">
+                      <i class="fa-regular fa-clock mr-1"></i> อีก {{ getDaysLeft(t[17]) }} วัน
+                    </span>
+                  </td>
+                  <td class="p-4 text-center space-x-2">
+                    <button @click="restoreItem(t[0])" class="text-xs px-3 py-1.5 bg-white border border-gray-300 text-gray-600 rounded hover:bg-gray-50 font-bold transition"><i class="fa-solid fa-rotate-left mr-1"></i> กู้คืน</button>
+                    <button @click="hardDeleteItem(t[0])" class="text-xs px-3 py-1.5 bg-red-500 text-white rounded hover:bg-red-600 font-bold shadow-sm transition"><i class="fa-solid fa-trash mr-1"></i> ลบทันที</button>
+                  </td>
+                </tr>
+                <tr v-if="trashedTransactions.length === 0"><td colspan="6" class="p-12 text-center text-gray-400 font-bold">ถังขยะว่างเปล่า</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= Tab: ระบบกู้ยืมเงินองค์กร (Loan Management) ================= -->
+      <section v-if="currentTab === 'loan' && hasPerm('viewLoan')" class="space-y-6 animate-fade-in">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div class="bg-gradient-to-r from-tijBlue to-blue-500 p-6 text-white flex justify-between items-center">
+            <div>
+              <h2 class="text-2xl font-bold"><i class="fa-solid fa-hand-holding-dollar mr-2"></i>ระบบกู้ยืมเงิน / เบิกเงิน</h2>
+              <p class="text-xs text-blue-100 mt-1">จัดการคำขอยืมเงิน สัญญา และระบบแจ้งเตือนอีเมลอัตโนมัติ</p>
+            </div>
+            <span class="bg-black/20 px-3 py-1 rounded text-xs font-mono border border-white/10">{{ todayStr }}</span>
+          </div>
+          <div class="flex overflow-x-auto border-b border-gray-200 px-2 bg-gray-50">
+            <button @click="loanSubTab = 'dashboard'" :class="loanSubTab === 'dashboard' ? 'text-tijBlue border-b-4 border-tijBlue font-bold bg-white' : 'text-gray-500 hover:text-gray-800'" class="px-5 py-3 text-sm transition whitespace-nowrap"><i class="fa-solid fa-chart-bar mr-2"></i>ภาพรวม</button>
+            <button @click="loanSubTab = 'list'" :class="loanSubTab === 'list' ? 'text-tijBlue border-b-4 border-tijBlue font-bold bg-white' : 'text-gray-500 hover:text-gray-800'" class="px-5 py-3 text-sm transition whitespace-nowrap"><i class="fa-solid fa-list-check mr-2"></i>รายการสัญญา</button>
+            <button v-if="hasPerm('createEntry')" @click="loanSubTab = 'entry'" :class="loanSubTab === 'entry' ? 'text-tijBlue border-b-4 border-tijBlue font-bold bg-white' : 'text-gray-500 hover:text-gray-800'" class="px-5 py-3 text-sm transition whitespace-nowrap"><i class="fa-solid fa-plus-circle mr-2"></i>สร้างรายการ</button>
+          </div>
+        </div>
+
+        <!-- Sub-Tab: ภาพรวม -->
+        <div v-if="loanSubTab === 'dashboard'" class="animate-fade-in space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition">
+              <i class="fa-solid fa-file-signature absolute -right-4 -bottom-4 text-6xl text-tijBlue opacity-10 transition-transform group-hover:scale-110"></i>
+              <p class="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">กำลังดำเนินการ (Active)</p>
+              <h3 class="text-3xl font-black text-tijBlue mb-2">฿ {{ loanStats.activeAmount | formatNumber }}</h3>
+              <p class="text-[10px] text-gray-400 font-bold">จากทั้งหมด {{ loanStats.activeCount }} สัญญา</p>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition">
+              <i class="fa-solid fa-check-circle absolute -right-4 -bottom-4 text-6xl text-gray-400 opacity-10 transition-transform group-hover:scale-110"></i>
+              <p class="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">ปิดยอดแล้ว (Closed)</p>
+              <h3 class="text-3xl font-black text-gray-700 mb-2">{{ loanStats.closedCount }} <span class="text-sm text-gray-400 font-medium">สัญญา</span></h3>
+            </div>
+          </div>
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="bg-red-50 border-b border-red-100 p-4">
+              <h3 class="font-bold text-red-700 text-sm"><i class="fa-regular fa-bell mr-2"></i>รายการใกล้ครบกำหนดหรือเลยกำหนด (Due Soon / Overdue)</h3>
+            </div>
+            <div class="p-0 overflow-x-auto">
+              <table class="w-full text-left text-sm whitespace-nowrap">
+                <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                  <tr><th class="p-3 pl-6">เลขที่เอกสาร</th><th class="p-3">หมวดหมู่</th><th class="p-3">ชื่อผู้รับเงิน</th><th class="p-3">กำหนดชำระ</th><th class="p-3 text-right pr-6">ยอดเงิน</th></tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  <tr v-for="l in dueSoonLoans" :key="l[0]" class="hover:bg-red-50/30">
+                    <td class="p-3 pl-6 font-mono font-bold">{{ l[1] }}</td>
+                    <td class="p-3 text-xs"><span class="bg-white px-2 py-0.5 border rounded text-gray-600">{{ l[5] }}</span></td>
+                    <td class="p-3 font-bold">{{ l[2] }}</td>
+                    <td class="p-3 font-bold" :class="isOverdue(l[8]) ? 'text-red-600' : 'text-tijOrange'"><i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ formatThaiDateFull(l[8]) }}</td>
+                    <td class="p-3 text-right font-black pr-6">฿ {{ l[4] | formatNumber }}</td>
+                  </tr>
+                  <tr v-if="dueSoonLoans && dueSoonLoans.length === 0"><td colspan="5" class="p-8 text-center text-gray-400 text-xs font-bold">ไม่มีรายการที่ใกล้ครบกำหนดใน 7 วันนี้</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub-Tab: รายการสัญญา -->
+        <div v-if="loanSubTab === 'list'" class="animate-fade-in bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div class="p-4 border-b border-gray-100 flex flex-wrap gap-3 bg-gray-50 items-center">
+            <div class="flex-1 min-w-[200px] relative">
+              <i class="fa-solid fa-search absolute left-3 top-2.5 text-gray-400"></i>
+              <input type="text" v-model="loanFilters.search" placeholder="ค้นหาชื่อผู้กู้ หรือ เลขสัญญา..." class="w-full pl-9 p-2 border border-gray-200 rounded-lg focus:border-tijBlue outline-none text-sm bg-white">
+            </div>
+            <select v-model="loanFilters.status" class="p-2 border border-gray-200 rounded-lg outline-none font-bold text-sm text-gray-600 bg-white">
+              <option value="">ทุกสถานะ</option>
+              <option value="Active">กำลังดำเนินการ (Active)</option>
+              <option value="Closed">ปิดยอดแล้ว (Closed)</option>
+            </select>
+            <button @click="sendMultiReminders" class="px-4 py-2 bg-tijOrange text-white text-xs font-bold rounded-lg shadow hover:bg-orange-600 transition disabled:opacity-50" :disabled="selectedLoans.length === 0">
+              <i class="fa-solid fa-bell mr-1"></i> แจ้งเตือน {{ selectedLoans.length }} รายการ
+            </button>
+          </div>
+          <div class="overflow-x-auto custom-scrollbar min-h-[300px]">
+            <table class="w-full text-left whitespace-nowrap">
+              <thead class="bg-gray-100 text-gray-500 text-xs uppercase tracking-wider border-b">
+                <tr>
+                  <th class="p-4 pl-6 w-10">
+                    <input type="checkbox" @change="toggleAllLoans" :checked="selectedLoans.length === filteredLoans.filter(l=>l[9]==='Active').length && filteredLoans.filter(l=>l[9]==='Active').length > 0" class="w-4 h-4 cursor-pointer accent-tijOrange">
+                  </th>
+                  <th @click="sortLoanByCol(1)" class="p-4 font-bold cursor-pointer hover:bg-gray-200 transition select-none">เลขสัญญา <i class="fa-solid fa-sort ml-1 opacity-50"></i></th>
+                  <th @click="sortLoanByCol(5)" class="p-4 font-bold cursor-pointer hover:bg-gray-200 transition select-none">หมวดหมู่ <i class="fa-solid fa-sort ml-1 opacity-50"></i></th>
+                  <th @click="sortLoanByCol(2)" class="p-4 font-bold cursor-pointer hover:bg-gray-200 transition select-none">ชื่อผู้รับเงิน / อีเมล <i class="fa-solid fa-sort ml-1 opacity-50"></i></th>
+                  <th @click="sortLoanByCol(7)" class="p-4 font-bold cursor-pointer hover:bg-gray-200 transition select-none">วันรับเงิน - กำหนดคืน <i class="fa-solid fa-sort ml-1 opacity-50"></i></th>
+                  <th @click="sortLoanByCol(4)" class="p-4 font-bold text-right cursor-pointer hover:bg-gray-200 transition select-none">ยอดเงิน (฿) <i class="fa-solid fa-sort ml-1 opacity-50"></i></th>
+                  <th @click="sortLoanByCol(9)" class="p-4 font-bold text-center cursor-pointer hover:bg-gray-200 transition select-none">สถานะ <i class="fa-solid fa-sort ml-1 opacity-50"></i></th>
+                  <th class="p-4 font-bold text-center">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 text-sm">
+                <tr v-for="l in filteredLoans" :key="l[0]" class="hover:bg-blue-50/30 transition">
+                  <td class="p-4 pl-6"><input type="checkbox" :value="l[0]" v-model="selectedLoans" class="w-4 h-4 cursor-pointer accent-tijOrange" v-if="l[9] === 'Active'"></td>
+                  <td class="p-4 font-mono font-bold text-tijBlue"><span class="bg-blue-50 border border-blue-100 px-2 py-1 rounded">{{ l[1] }}</span></td>
+                  <td class="p-4"><span class="text-xs bg-gray-100 px-2 py-1 border rounded">{{ l[5] }}</span></td>
+                  <td class="p-4"><p class="font-bold text-gray-800">{{ l[2] }}</p><p class="text-[10px] text-gray-500">{{ l[3] }}</p></td>
+                  <td class="p-4">
+                    <p class="text-xs text-gray-600">รับเงิน: {{ formatThaiDateFull(l[7]) }}</p>
+                    <p class="text-xs font-bold text-gray-800">คืนเงิน: <span :class="(isOverdue(l[8]) && l[9] === 'Active') ? 'text-red-500 bg-red-100 px-1 rounded' : 'text-gray-800'">{{ formatThaiDateFull(l[8]) }}</span></p>
+                  </td>
+                  <td class="p-4 text-right font-black text-base text-gray-800">{{ l[4] | formatNumber }}</td>
+                  <td class="p-4 text-center">
+                    <span v-if="l[9]==='Active'" class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-[10px] font-bold border border-blue-200"><i class="fa-solid fa-spinner fa-spin mr-1"></i>ดำเนินการ</span>
+                    <span v-if="l[9]==='Closed'" class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-[10px] font-bold border border-gray-300"><i class="fa-solid fa-check-double mr-1"></i>ปิดยอดแล้ว</span>
+                  </td>
+                  <td class="p-4 text-center space-x-1">
+                    <a v-if="l[10]" :href="l[10]" target="_blank" class="inline-block w-8 h-8 leading-8 text-center rounded hover:bg-blue-100 text-tijBlue hover:text-blue-600 transition" title="ดูไฟล์แนบ"><i class="fa-solid fa-paperclip"></i></a>
+                    <button @click="openEditLoanModal(l)" class="w-8 h-8 rounded hover:bg-green-100 text-gray-400 hover:text-green-600 transition" title="แก้ไข/เปลี่ยนสถานะ"><i class="fa-solid fa-pen"></i></button>
+                    <button v-if="hasPerm('manageTrash')" @click="deleteLoanItem(l[0])" class="w-8 h-8 rounded hover:bg-red-100 text-gray-400 hover:text-red-500 transition" title="ลบ"><i class="fa-solid fa-trash"></i></button>
+                  </td>
+                </tr>
+                <tr v-if="filteredLoans && filteredLoans.length === 0"><td colspan="8" class="p-10 text-center text-gray-400 font-bold">ไม่พบข้อมูล</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Sub-Tab: สร้างรายการ -->
+        <div v-if="loanSubTab === 'entry'" class="animate-fade-in max-w-3xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div class="bg-gray-50 p-6 border-b border-gray-200 flex justify-between items-center">
+            <div>
+              <h3 class="font-bold text-lg text-gray-800"><i class="fa-solid fa-file-signature text-tijBlue mr-2"></i>ฟอร์มสร้างเอกสารเงินกู้ / เบิกเงิน</h3>
+              <p class="text-xs text-gray-500 mt-1">ระบบจะรันเลขเอกสารให้อัตโนมัติ (เช่น 001/2567)</p>
+            </div>
+            <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded border border-blue-200 text-xs font-mono font-bold">{{ loanForm.isManual ? 'กำหนดเอง' : (nextLoanDoc || '-') }}</span>
+          </div>
+          <form @submit.prevent="submitLoanForm" class="p-8 space-y-6">
+            <div class="bg-blue-50/50 p-5 rounded-xl border border-blue-100 flex flex-wrap gap-4 items-center">
+              <div class="flex-1 min-w-[200px] relative">
+                <label class="block text-xs font-bold text-gray-500 mb-1 uppercase">วันที่รับเงิน <span class="text-red-500">*</span></label>
+                <div class="relative">
+                  <input type="date" v-model="loanForm.borrowDate" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 date-overlay" @click="$event.target.showPicker && $event.target.showPicker()">
+                  <input type="text" :value="formatThaiDateFull(loanForm.borrowDate)" readonly class="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-gray-800 font-bold pointer-events-none shadow-sm">
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1 uppercase">ลำดับที่</label>
+                <input type="number" v-model="loanForm.runningNo" :disabled="!loanForm.isManual" class="w-20 p-2.5 border border-gray-300 rounded-lg focus:border-tijBlue disabled:bg-gray-100 text-center font-mono font-bold shadow-sm">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1 uppercase">ปี พ.ศ.</label>
+                <input type="number" v-model="loanForm.year" :disabled="!loanForm.isManual" class="w-24 p-2.5 border border-gray-300 rounded-lg focus:border-tijBlue disabled:bg-gray-100 text-center font-mono font-bold shadow-sm">
+              </div>
+              <div class="pt-5 flex items-center bg-white px-3 py-2 rounded-lg border shadow-sm">
+                <input type="checkbox" v-model="loanForm.isManual" id="manualLoan" class="w-4 h-4 text-tijOrange rounded cursor-pointer accent-tijOrange">
+                <label for="manualLoan" class="ml-2 text-xs text-gray-600 font-bold cursor-pointer">แก้ไขเลขเอง</label>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div><label class="block text-xs font-bold text-gray-500 mb-1 uppercase">ชื่อผู้รับเงิน <span class="text-red-500">*</span></label><input type="text" v-model="loanForm.borrowerName" required class="w-full p-3 border border-gray-300 rounded-lg focus:border-tijBlue bg-white text-sm shadow-sm"></div>
+              <div><label class="block text-xs font-bold text-gray-500 mb-1 uppercase">อีเมล (สำหรับแจ้งเตือน) <span class="text-red-500">*</span></label><input type="email" v-model="loanForm.borrowerEmail" required class="w-full p-3 border border-gray-300 rounded-lg focus:border-tijBlue bg-white text-sm shadow-sm font-mono"></div>
+              <div><label class="block text-xs font-bold text-gray-500 mb-1 uppercase">จำนวนเงิน (บาท) <span class="text-red-500">*</span></label><input type="number" step="0.01" v-model="loanForm.amount" required class="w-full p-3 border border-gray-300 rounded-lg focus:border-tijBlue font-black text-tijBlue text-lg bg-blue-50 shadow-sm"></div>
+              <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1 uppercase">หมวดหมู่ค่าใช้จ่าย <span class="text-red-500">*</span></label>
+                <select v-model="loanForm.category" required class="w-full p-3 border border-gray-300 rounded-lg focus:border-tijBlue bg-white text-sm shadow-sm">
+                  <option disabled value="">- เลือกหมวดหมู่ -</option>
+                  <option v-for="type in loanConfig.loanCategories" :key="type" :value="type">{{ type }}</option>
+                  <option value="อื่นๆ">อื่นๆ (โปรดระบุหมายเหตุ)</option>
+                </select>
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs font-bold text-gray-500 mb-1 uppercase">
+                  {{ loanForm.category === 'อื่นๆ' ? 'ระบุหมายเหตุ/รายละเอียด (จำเป็น)' : 'วัตถุประสงค์ / หมายเหตุเพิ่มเติม' }}
+                  <span v-if="loanForm.category === 'อื่นๆ'" class="text-red-500">*</span>
+                </label>
+                <textarea v-model="loanForm.note" rows="2" :required="loanForm.category === 'อื่นๆ'" class="w-full p-3 border border-gray-300 rounded-lg focus:border-tijBlue bg-white text-sm shadow-sm"></textarea>
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs font-bold text-gray-500 mb-1 uppercase">แนบไฟล์หลักฐาน (รูปภาพ หรือ PDF)</label>
+                <div class="flex items-center gap-3">
+                  <input type="file" @change="handleFileUpload" accept="image/*,.pdf" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-tijBlue hover:file:bg-blue-100 cursor-pointer border border-gray-200 rounded-lg p-1 bg-white">
+                  <span v-if="loanForm.fileName" class="text-xs font-bold text-tijBlue truncate max-w-[200px]"><i class="fa-solid fa-check mr-1"></i>อัปโหลดแล้ว</span>
+                </div>
+              </div>
+              <div class="md:col-span-2 mt-2">
+                <label class="block text-xs font-bold text-red-500 mb-1 uppercase">กำหนดเคลียร์/ชำระคืน (Due Date) <span class="text-red-500">*</span></label>
+                <div class="relative"><input type="date" v-model="loanForm.dueDate" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 date-overlay" @click="$event.target.showPicker && $event.target.showPicker()"><input type="text" :value="formatThaiDateFull(loanForm.dueDate)" readonly placeholder="ดด/วว/ปปปป" class="w-full p-3 border border-red-300 rounded-lg bg-red-50 text-red-700 font-bold pointer-events-none shadow-sm"></div>
+              </div>
+            </div>
+            <div class="pt-6 border-t border-gray-100 flex justify-end gap-3">
+              <button type="button" @click="resetLoanForm" class="px-5 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-50">ล้างข้อมูล</button>
+              <button type="submit" class="px-8 py-2.5 bg-tijBlue text-white rounded-lg text-sm font-bold shadow hover:bg-blue-600 transition"><i class="fa-solid fa-save mr-2"></i> บันทึกเข้าระบบ</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ================= แท็บ: ตั้งค่าระบบ (System Settings) ================= -->
+      <section v-if="currentTab === 'admin' && hasPerm('accessSettings')" class="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 flex overflow-hidden min-h-[600px] flex-col md:flex-row animate-fade-in">
+        
+        <!-- แถบเมนูด้านซ้าย -->
+        <div class="w-full md:w-1/4 bg-gray-50 border-r border-gray-200 flex flex-col shrink-0">
+          <div class="p-5 border-b border-gray-200 hidden md:block">
+            <h2 class="font-bold text-gray-800 text-lg"><i class="fa-solid fa-gear text-gray-500 mr-2"></i>ตั้งค่าระบบ</h2>
+          </div>
+          <div class="flex flex-row md:flex-col overflow-x-auto md:overflow-x-visible border-b md:border-b-0 border-gray-200 md:py-4 flex-1">
+            <button v-if="hasPerm('manageDash')" @click="adminSubTab='dashboard'" :class="adminSubTab==='dashboard' ? 'bg-blue-100 text-tijBlue md:border-r-4 border-b-4 md:border-b-0 border-tijBlue font-bold' : 'text-gray-600 hover:bg-gray-100'" class="whitespace-nowrap md:w-full text-center md:text-left px-5 py-4 text-sm transition"><i class="fa-solid fa-layer-group fa-fw mr-2 opacity-70"></i> จัดการแดชบอร์ด</button>
+            <button v-if="isAdmin" @click="adminSubTab='loanSettings'" :class="adminSubTab==='loanSettings' ? 'bg-blue-100 text-tijBlue md:border-r-4 border-b-4 md:border-b-0 border-tijBlue font-bold' : 'text-gray-600 hover:bg-gray-100'" class="whitespace-nowrap md:w-full text-center md:text-left px-5 py-4 text-sm transition"><i class="fa-solid fa-sliders fa-fw mr-2 opacity-70"></i> ตั้งค่าระบบเงินกู้</button>
+            <button v-if="isAdmin" @click="adminSubTab='users'" :class="adminSubTab==='users' ? 'bg-blue-100 text-tijBlue md:border-r-4 border-b-4 md:border-b-0 border-tijBlue font-bold' : 'text-gray-600 hover:bg-gray-100'" class="whitespace-nowrap md:w-full text-center md:text-left px-5 py-4 text-sm transition"><i class="fa-solid fa-users-gear fa-fw mr-2 opacity-70"></i> สิทธิ์ผู้ใช้งาน (Roles)</button>
+            <button v-if="hasPerm('manageCustomers')" @click="adminSubTab='customers'" :class="adminSubTab==='customers' ? 'bg-blue-100 text-tijBlue md:border-r-4 border-b-4 md:border-b-0 border-tijBlue font-bold' : 'text-gray-600 hover:bg-gray-100'" class="whitespace-nowrap md:w-full text-center md:text-left px-5 py-4 text-sm transition"><i class="fa-solid fa-building fa-fw mr-2 opacity-70"></i> ฐานข้อมูลลูกค้า</button>
+            <button v-if="hasPerm('editCat')" @click="adminSubTab='categories'" :class="adminSubTab==='categories' ? 'bg-blue-100 text-tijBlue md:border-r-4 border-b-4 md:border-b-0 border-tijBlue font-bold' : 'text-gray-600 hover:bg-gray-100'" class="whitespace-nowrap md:w-full text-center md:text-left px-5 py-4 text-sm transition"><i class="fa-solid fa-sitemap fa-fw mr-2 opacity-70"></i> โครงสร้างบัญชี</button>
+            <button v-if="hasPerm('accessSettings')" @click="adminSubTab='request'" :class="adminSubTab==='request' ? 'bg-blue-100 text-tijBlue md:border-r-4 border-b-4 md:border-b-0 border-tijBlue font-bold' : 'text-gray-600 hover:bg-gray-100'" class="whitespace-nowrap md:w-full text-center md:text-left px-5 py-4 text-sm transition"><i class="fa-solid fa-paper-plane fa-fw mr-2 opacity-70"></i> ส่งข้อเสนอแนะ</button>
+            <div v-if="hasPerm('developer')" class="md:mt-auto border-l md:border-l-0 md:border-t border-gray-200 md:pt-4">
+              <button @click="adminSubTab='developer'" :class="adminSubTab==='developer' ? 'bg-gray-800 text-green-400 md:border-r-4 border-b-4 md:border-b-0 border-green-500 font-bold' : 'text-gray-500 hover:text-gray-800'" class="whitespace-nowrap md:w-full text-center md:text-left px-5 py-4 text-sm transition"><i class="fa-solid fa-code fa-fw mr-2 opacity-70"></i> สำหรับนักพัฒนา</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- เนื้อหาด้านขวา -->
+        <div class="w-full md:w-3/4 p-6 md:p-8 bg-white overflow-y-auto relative">
+          
+          <!-- Sub-Tab: จัดการแดชบอร์ด -->
+          <div v-if="adminSubTab==='dashboard'" class="animate-fade-in">
+             <div class="flex justify-between items-center mb-6 border-b pb-3">
+               <div>
+                 <h3 class="text-xl font-bold text-gray-800">จัดการหน้าแดชบอร์ด</h3>
+                 <p class="text-sm text-gray-500">ปรับแต่งสีสันและการแสดงผลสถิติในหน้าแรก (มีผลกับผู้ใช้งานทุกคน)</p>
+               </div>
+             </div>
+
+             <!-- Toggle สวิตช์เปิดปิด Widgets แบบดั้งเดิม -->
+             <h4 class="font-bold text-gray-700 mb-4 text-sm uppercase tracking-wider"><i class="fa-solid fa-layer-group text-tijBlue mr-2"></i>แสดง / ซ่อน วิดเจ็ตหน้าแรก</h4>
+             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div v-for="w in availableWidgets" :key="w.id" class="border border-gray-200 rounded-xl p-4 flex items-center justify-between hover:bg-gray-50 transition cursor-pointer" @click="toggleDash(w.id)">
+                  <div><h4 class="font-bold text-gray-700 text-sm mb-1"><i :class="['fa-solid', w.icon, 'text-gray-400', 'mr-2']"></i> {{w.title}}</h4><p class="text-[10px] text-gray-500">{{w.desc}}</p></div>
+                  <div class="relative inline-block w-10 align-middle select-none"><input type="checkbox" :checked="globalLayout[w.id]" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer"/><label class="toggle-label block overflow-hidden h-5 rounded-full cursor-pointer bg-gray-200"></label></div>
+                </div>
+             </div>
+          </div>
+
+          <!-- Sub-Tab: ตั้งค่าระบบเงินกู้ -->
+          <div v-if="adminSubTab==='loanSettings'" class="animate-fade-in">
+            <div class="flex justify-between items-center mb-6 border-b pb-3">
+              <div><h3 class="text-xl font-bold text-gray-800">ตั้งค่าระบบเบิกเงิน / เงินกู้</h3><p class="text-sm text-gray-500">กำหนดตัวเลือกหมวดหมู่ในฟอร์มและรอบวันส่งอีเมลแจ้งเตือน</p></div>
+              <button @click="saveLoanConfig" class="px-5 py-2 bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold rounded-lg shadow-sm transition"><i class="fa-solid fa-save mr-1"></i> บันทึกการตั้งค่า</button>
+            </div>
+            <div class="bg-gray-50 border border-gray-200 p-5 rounded-xl mb-6 shadow-sm">
+              <h4 class="font-bold text-gray-800 mb-2 text-sm"><i class="fa-solid fa-bell text-tijOrange mr-2"></i> วันที่จะส่งอีเมลแจ้งเตือนล่วงหน้า (วัน)</h4>
+              <p class="text-xs text-gray-500 mb-4">ระบบจะส่งอีเมลอัตโนมัติก่อนถึงวันครบกำหนด (Due Date) ตามจำนวนวันที่ระบุในนี้</p>
+              <div class="flex flex-wrap gap-2 mb-3">
+                <div v-for="(day, index) in loanConfig.reminderDays" :key="index" class="bg-white border border-gray-300 px-3 py-1.5 rounded-lg flex items-center shadow-sm">
+                  <span class="font-bold text-tijOrange mr-3">{{ day }} วัน</span>
+                  <button @click="loanConfig.reminderDays.splice(index, 1)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <input type="number" v-model.number="newReminderDay" placeholder="ระบุจำนวนวัน..." class="p-2 border rounded text-xs w-32 outline-none focus:border-tijBlue">
+                <button @click="addReminderDay" class="bg-white border border-gray-300 px-3 py-1 rounded text-xs font-bold hover:bg-gray-100">เพิ่มวัน</button>
+              </div>
+            </div>
+            <div class="bg-gray-50 border border-gray-200 p-5 rounded-xl shadow-sm">
+              <h4 class="font-bold text-gray-800 mb-2 text-sm"><i class="fa-solid fa-list-ul text-tijBlue mr-2"></i> หมวดหมู่ค่าใช้จ่ายระบบเงินกู้/เบิกเงิน (Loan Categories)</h4>
+              <p class="text-xs text-gray-500 mb-4">ตัวเลือกใน Dropdown เมื่อผู้ใช้กรอกฟอร์ม (ระบบจะมีตัวเลือก "อื่นๆ" แถมให้อัตโนมัติอยู่แล้ว)</p>
+              <div class="flex flex-wrap gap-2 mb-3">
+                <div v-for="(type, index) in loanConfig.loanCategories" :key="index" class="bg-white border border-gray-300 px-3 py-1.5 rounded-lg flex items-center shadow-sm">
+                  <span class="font-bold text-tijBlue mr-3">{{ type }}</span>
+                  <button @click="removeLoanCategory(index)" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <input type="text" v-model="newAdvanceType" placeholder="พิมพ์ชื่อหมวดหมู่..." class="p-2 border rounded text-xs w-64 outline-none focus:border-tijBlue">
+                <button @click="addAdvanceType" class="bg-white border border-gray-300 px-3 py-1 rounded text-xs font-bold hover:bg-gray-100">เพิ่มหมวดหมู่</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-Tab: ผู้ใช้งาน (เฉพาะ Admin) -->
+          <div v-if="adminSubTab==='users'" class="animate-fade-in">
+             <div class="flex justify-between items-center mb-6 border-b pb-3">
+               <div>
+                 <h3 class="text-xl font-bold text-gray-800">จัดการสิทธิ์ผู้ใช้งาน (Role Matrix)</h3>
+                 <p class="text-sm text-gray-500">สร้าง Role ใหม่และกำหนดสิทธิ์เข้าถึงรายเมนูได้อย่างอิสระ</p>
+               </div>
+               <span class="text-sm bg-gray-100 text-gray-600 px-3 py-1 rounded-full font-medium border border-gray-200">ทั้งหมด: {{ users.length }} บัญชี</span>
+             </div>
+             
+             <!-- ตารางอธิบายและแก้ไขสิทธิ์แบบ Dynamic -->
+             <div class="mb-8 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+               <div class="bg-blue-50 px-4 py-3 flex justify-between items-center border-b border-blue-100">
+                 <h4 class="text-sm font-bold text-tijBlue"><i class="fa-solid fa-lock mr-2"></i>ตารางกำหนดสิทธิ์ (Permissions)</h4>
+                 <button @click="saveRoleMatrix" class="text-xs bg-gray-800 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-gray-700 transition font-bold"><i class="fa-solid fa-save mr-1"></i> บันทึกสิทธิ์</button>
+               </div>
+               <div class="overflow-x-auto">
+                 <table class="w-full text-left text-[11px] bg-white">
+                   <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
+                     <tr>
+                       <th class="p-3">ตำแหน่ง (Role)</th>
+                       <th class="p-2 text-center"><i class="fa-solid fa-chart-pie block mb-1"></i>ดูภาพรวม</th>
+                       <th class="p-2 text-center"><i class="fa-solid fa-pen-to-square block mb-1"></i>สร้าง/แก้ไข</th>
+                       <th class="p-2 text-center"><i class="fa-solid fa-table block mb-1"></i>ดูตาราง</th>
+                       <th class="p-2 text-center"><i class="fa-solid fa-sitemap block mb-1"></i>จัดหมวด</th>
+                       <th class="p-2 text-center"><i class="fa-solid fa-trash block mb-1"></i>ถังขยะ</th>
+                       <th class="p-2 text-center"><i class="fa-solid fa-users block mb-1"></i>ดูแลลูกค้า</th>
+                       <th class="p-2 text-center"><i class="fa-solid fa-layer-group block mb-1"></i>แดชบอร์ด</th>
+                       <th class="p-2 text-center"><i class="fa-solid fa-gear block mb-1"></i>เมนูตั้งค่า</th>
+                       <th class="p-2 text-center"><i class="fa-solid fa-code block mb-1"></i>นักพัฒนา</th>
+                       <th class="p-2 text-center">ลบ</th>
+                     </tr>
+                   </thead>
+                   <tbody class="divide-y divide-gray-100">
+                     <tr v-for="(perms, role) in rolePerms" :key="role" class="hover:bg-gray-50 transition">
+                       <td class="p-3 font-bold text-gray-800 whitespace-nowrap"><i class="fa-solid fa-user-shield text-gray-300 mr-2"></i>{{ role }}</td>
+                       <!-- Admin แก้ไขสิทธิ์ตัวเองไม่ได้ เพื่อป้องกันการล็อกตัวเองออก -->
+                       <td class="p-2 text-center"><input type="checkbox" v-model="perms.viewDash" :disabled="role==='Admin'" class="w-4 h-4 text-tijBlue cursor-pointer"></td>
+                       <td class="p-2 text-center"><input type="checkbox" v-model="perms.createEntry" :disabled="role==='Admin'" class="w-4 h-4 text-tijBlue cursor-pointer"></td>
+                       <td class="p-2 text-center"><input type="checkbox" v-model="perms.viewList" :disabled="role==='Admin'" class="w-4 h-4 text-tijBlue cursor-pointer"></td>
+                       <td class="p-2 text-center"><input type="checkbox" v-model="perms.editCat" :disabled="role==='Admin'" class="w-4 h-4 text-tijBlue cursor-pointer"></td>
+                       <td class="p-2 text-center"><input type="checkbox" v-model="perms.manageTrash" :disabled="role==='Admin'" class="w-4 h-4 text-tijBlue cursor-pointer"></td>
+                       <td class="p-2 text-center"><input type="checkbox" v-model="perms.manageCustomers" :disabled="role==='Admin'" class="w-4 h-4 text-tijBlue cursor-pointer"></td>
+                       <td class="p-2 text-center"><input type="checkbox" v-model="perms.manageDash" :disabled="role==='Admin'" class="w-4 h-4 text-tijBlue cursor-pointer"></td>
+                       <td class="p-2 text-center"><input type="checkbox" v-model="perms.accessSettings" :disabled="role==='Admin'" class="w-4 h-4 text-tijBlue cursor-pointer"></td>
+                       <td class="p-2 text-center"><input type="checkbox" v-model="perms.developer" :disabled="role==='Admin'" class="w-4 h-4 text-tijBlue cursor-pointer"></td>
+                       <td class="p-2 text-center">
+                         <button v-if="!['Admin','ฝ่ายบัญชี','การเงิน','พนักงานทั่วไป'].includes(role)" @click="deleteRole(role)" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
+                       </td>
+                     </tr>
+                   </tbody>
+                 </table>
+               </div>
+               <div class="bg-gray-50 p-3 flex gap-3 items-center border-t border-gray-200">
+                 <input type="text" v-model="newRoleName" placeholder="พิมพ์ชื่อตำแหน่งใหม่ (เช่น ผู้จัดการ)" class="px-3 py-2 border border-gray-300 rounded text-xs flex-1 outline-none focus:border-tijBlue focus:ring-1 focus:ring-tijBlue">
+                 <button @click="addNewRole" class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded text-xs font-bold hover:bg-gray-100 transition shadow-sm"><i class="fa-solid fa-plus mr-1"></i> สร้าง Role ใหม่</button>
+               </div>
+             </div>
+
+             <h4 class="font-bold text-gray-700 mb-3 text-sm uppercase tracking-wider"><i class="fa-solid fa-users text-gray-400 mr-2"></i> ผู้ใช้งานทั้งหมดในระบบ</h4>
+             <div class="overflow-x-auto shadow-sm rounded-xl border border-gray-200">
+               <table class="w-full text-left text-sm whitespace-nowrap">
+                 <thead class="bg-gray-50 border-b border-gray-200"><tr><th class="p-3 font-semibold text-gray-600 text-xs">บัญชีอีเมล / ใช้งานล่าสุด</th><th class="p-3 font-semibold text-gray-600 text-xs">มอบหมายตำแหน่ง</th><th class="p-3 font-semibold text-gray-600 text-xs text-center">นำออก</th></tr></thead>
+                 <tbody class="divide-y divide-gray-100">
+                   <tr v-for="u in users" :key="u[0]" class="hover:bg-gray-50 transition">
+                     <td class="p-3 font-medium text-gray-800">{{ u[0] }} <div class="text-[10px] text-gray-400 mt-1"><i class="fa-regular fa-clock mr-1"></i> {{ formatThaiDateFull(u[2]) }}</div></td>
+                     <td class="p-3">
+                       <select @change="changeRole(u[0], $event.target.value)" class="border border-gray-300 p-1.5 rounded bg-white outline-none text-xs font-bold shadow-sm w-36 cursor-pointer focus:border-tijBlue">
+                         <option v-for="(perms, role) in rolePerms" :key="role" :value="role" :selected="u[1] === role">{{ role }}</option>
+                       </select>
+                     </td>
+                     <td class="p-3 text-center"><button @click="removeUser(u[0])" class="text-gray-400 hover:text-red-500 bg-white border hover:bg-red-50 p-1.5 rounded transition"><i class="fa-solid fa-trash-can"></i></button></td>
+                   </tr>
+                 </tbody>
+               </table>
+             </div>
+          </div>
+
+          <!-- Sub-Tab: ฐานข้อมูลลูกค้า -->
+          <div v-if="adminSubTab==='customers'" class="animate-fade-in">
+             <div class="flex justify-between items-center mb-6 border-b pb-3">
+               <div><h3 class="text-xl font-bold text-gray-800">ฐานข้อมูลลูกค้า / ผู้ติดต่อ</h3><p class="text-sm text-gray-500">สำหรับระบบ Auto-fill อัตโนมัติในหน้าฟอร์มสร้างรายการ</p></div>
+               <button @click="openCustomerModal()" class="px-4 py-2 bg-gray-800 text-white text-xs font-bold rounded-lg shadow-sm hover:bg-gray-700 transition"><i class="fa-solid fa-plus mr-1"></i> เพิ่มลูกค้า</button>
+             </div>
+             <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white">
+               <div class="max-h-[450px] overflow-y-auto custom-scrollbar">
+                 <table class="w-full text-left text-sm whitespace-nowrap">
+                   <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm border-b border-gray-200">
+                     <tr><th class="p-3 text-xs font-bold text-gray-600">ชื่อลูกค้า / องค์กร</th><th class="p-3 text-xs font-bold text-gray-600">เลขภาษี</th><th class="p-3 text-xs font-bold text-gray-600">ที่อยู่</th><th class="p-3 text-xs font-bold text-gray-600 text-center">จัดการ</th></tr>
+                   </thead>
+                   <tbody class="divide-y divide-gray-100">
+                     <tr v-for="c in customers" :key="c[0]" class="hover:bg-gray-50 transition">
+                       <td class="p-3 font-bold text-tijBlue">{{ c[1] }}</td>
+                       <td class="p-3 font-mono text-gray-500 text-xs">{{ c[2] || '-' }}</td>
+                       <td class="p-3 text-gray-500 text-[10px] truncate max-w-[200px]" :title="formatAddressObject(c[3])">{{ formatAddressObject(c[3]) || '-' }}</td>
+                       <td class="p-3 text-center space-x-1">
+                         <button @click="viewCustomerHistory(c[1])" class="w-7 h-7 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-700 transition" title="ดูประวัติ"><i class="fa-solid fa-clock-rotate-left"></i></button>
+                         <button @click="openCustomerModal(c)" class="w-7 h-7 rounded hover:bg-blue-50 text-gray-400 hover:text-tijBlue transition" title="แก้ไข"><i class="fa-solid fa-pen"></i></button>
+                         <button @click="deleteCustomer(c[0])" class="w-7 h-7 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition" title="ลบ"><i class="fa-solid fa-trash"></i></button>
+                       </td>
+                     </tr>
+                     <tr v-if="customers.length === 0"><td colspan="4" class="p-6 text-center text-gray-400 text-xs">ยังไม่มีข้อมูล</td></tr>
+                   </tbody>
+                 </table>
+               </div>
+             </div>
+          </div>
+
+          <!-- Sub-Tab: หมวดหมู่บัญชี -->
+          <div v-if="adminSubTab==='categories'" class="animate-fade-in">
+             <div class="flex justify-between items-center mb-6 border-b pb-3">
+               <div><h3 class="text-xl font-bold text-gray-800">โครงสร้างหมวดหมู่บัญชี</h3><p class="text-sm text-gray-500">จัดการประเภท กลุ่ม และรายการต่างๆ เพื่อให้การเงินเลือกใช้งาน</p></div>
+               <button @click="saveCategories" class="px-5 py-2 bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold rounded-lg shadow-sm transition"><i class="fa-solid fa-save mr-1"></i> บันทึกผังบัญชีใหม่</button>
+             </div>
+             
+             <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl mb-6 shadow-sm">
+               <h4 class="text-xs font-bold text-blue-800 mb-3 uppercase tracking-wider"><i class="fa-solid fa-plus-circle mr-1"></i> เพิ่มรายการบัญชีใหม่</h4>
+               <div class="flex flex-wrap gap-2">
+                 <select v-model="newCat.category" class="p-2 border border-blue-200 rounded text-xs bg-white flex-1 min-w-[100px] outline-none focus:border-tijBlue"><option>รายรับ</option><option>รายจ่าย</option></select>
+                 <input type="text" v-model="newCat.group" placeholder="กลุ่มบัญชี (เช่น รายรับอื่น)" class="p-2 border border-blue-200 rounded text-xs bg-white flex-1 min-w-[120px] outline-none focus:border-tijBlue">
+                 <input type="text" v-model="newCat.type" placeholder="ประเภท (เช่น ดอกเบี้ย)" class="p-2 border border-blue-200 rounded text-xs bg-white flex-1 min-w-[120px] outline-none focus:border-tijBlue">
+                 <input type="text" v-model="newCat.item" placeholder="ชื่อรายการ (เฉพาะเจาะจง)" class="p-2 border border-blue-200 rounded text-xs bg-white flex-[2] min-w-[150px] outline-none focus:border-tijBlue">
+                 <button @click="addCategoryRow" class="bg-tijBlue text-white px-4 rounded font-bold hover:bg-blue-600 text-xs shadow-sm transition"><i class="fa-solid fa-plus"></i></button>
+               </div>
+             </div>
+
+             <div class="max-h-[400px] overflow-y-auto border border-gray-200 rounded-xl custom-scrollbar shadow-sm bg-white">
+               <table class="w-full text-left whitespace-nowrap">
+                 <thead class="bg-gray-50 sticky top-0 shadow-sm z-10 text-xs text-gray-500 uppercase tracking-wider border-b">
+                   <tr><th class="p-3 font-bold pl-5">หมวด</th><th class="p-3 font-bold">กลุ่มบัญชี</th><th class="p-3 font-bold">ประเภท</th><th class="p-3 font-bold">ชื่อรายการ</th><th class="p-3 font-bold text-center">นำออก</th></tr>
+                 </thead>
+                 <tbody class="divide-y divide-gray-100 text-xs">
+                   <tr v-for="(row, index) in rawConfig" :key="index" class="hover:bg-gray-50 transition">
+                     <td class="p-2 pl-5" :class="row[0] === 'รายรับ' ? 'text-tijBlue font-bold' : 'text-tijOrange font-bold'">{{ row[0] }}</td>
+                     <td class="p-1"><input type="text" v-model="row[1]" class="w-full p-1.5 border border-transparent hover:border-gray-200 rounded focus:border-tijBlue focus:bg-white outline-none bg-transparent font-medium text-gray-700 transition"></td>
+                     <td class="p-1"><input type="text" v-model="row[2]" class="w-full p-1.5 border border-transparent hover:border-gray-200 rounded focus:border-tijBlue focus:bg-white outline-none bg-transparent font-medium text-gray-700 transition"></td>
+                     <td class="p-1"><input type="text" v-model="row[3]" class="w-full p-1.5 border border-transparent hover:border-gray-200 rounded focus:border-tijBlue focus:bg-white outline-none bg-transparent font-medium text-gray-700 transition"></td>
+                     <td class="p-1 text-center"><button @click="removeCategoryRow(index)" class="text-gray-300 hover:text-red-500 p-1.5 rounded transition"><i class="fa-solid fa-trash"></i></button></td>
+                   </tr>
+                 </tbody>
+               </table>
+             </div>
+          </div>
+
+          <!-- Sub-Tab: ส่งข้อเสนอแนะ -->
+          <div v-if="adminSubTab==='request'" class="animate-fade-in">
+             <div class="mb-6 border-b pb-3">
+               <h3 class="text-xl font-bold text-gray-800">ส่งข้อเสนอแนะให้ทีมพัฒนา (Feature Requests)</h3>
+               <p class="text-sm text-gray-500">พบปัญหาบั๊ก หรือต้องการฟีเจอร์ใหม่ สามารถพิมพ์ส่งให้ทีม Developer ได้โดยตรง</p>
+             </div>
+             <div class="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm mb-6 max-w-2xl mx-auto">
+                <form @submit.prevent="submitRequest" class="flex flex-col gap-4">
+                  <label class="text-xs font-bold text-gray-600 uppercase">อธิบายสิ่งที่คุณต้องการ</label>
+                  <textarea v-model="widgetRequestText" rows="5" placeholder="เช่น ขอเพิ่มกราฟแท่งเปรียบเทียบรายได้แต่ละเดือนในหน้าแดชบอร์ด..." required class="w-full p-4 border border-gray-300 rounded-xl focus:border-tijBlue outline-none text-sm bg-gray-50 focus:bg-white shadow-inner transition"></textarea>
+                  <button type="submit" class="self-end px-6 py-2.5 bg-gray-800 text-white font-bold rounded-lg shadow hover:bg-gray-900 transition text-sm"><i class="fa-solid fa-paper-plane mr-2"></i> ส่งคำร้อง</button>
+                </form>
+             </div>
+          </div>
+
+          <!-- Sub-Tab: Developer Hub (เฉพาะนักพัฒนา) -->
+          <div v-if="adminSubTab==='developer'" class="animate-fade-in">
+             <div class="mb-6 flex justify-between items-end border-b pb-3">
+               <div><h3 class="text-2xl font-black text-gray-900 tracking-tight">Developer Hub</h3><p class="text-xs text-gray-500 font-mono mt-1">ศูนย์รวมเครื่องมือและผังการทำงานของระบบ</p></div>
+               <span class="bg-gray-800 text-green-400 px-3 py-1 rounded text-[10px] font-mono border border-gray-600">v3.0.0 Stable</span>
+             </div>
+             
+             <!-- กล่องคำร้อง (Ticket System) -->
+             <div class="border border-gray-200 rounded-xl p-5 shadow-sm bg-white mb-6">
+               <h4 class="font-bold text-gray-800 mb-3 text-sm uppercase tracking-wider"><i class="fa-solid fa-ticket text-tijBlue mr-2"></i> รายการคำร้อง (Bug Reports & Features)</h4>
+               <div class="overflow-x-auto max-h-[250px] custom-scrollbar border rounded-lg">
+                 <table class="w-full text-left text-xs">
+                   <thead class="bg-gray-100 sticky top-0 z-10 border-b"><tr><th class="p-2">วันที่ (Date)</th><th class="p-2">ผู้ส่ง (User)</th><th class="p-2">เนื้อหา (Description)</th><th class="p-2 w-32">สถานะ (Status)</th></tr></thead>
+                   <tbody class="divide-y divide-gray-100 font-mono">
+                      <tr v-for="r in allRequests" :key="r[0]" class="hover:bg-gray-50 transition">
+                        <td class="p-2 text-gray-400">{{ formatThaiDateFull(r[4]) }}</td>
+                        <td class="p-2 font-bold text-gray-600">{{ r[1].split('@')[0] }}</td>
+                        <td class="p-2 text-gray-800 whitespace-normal leading-relaxed">{{ r[2] }}</td>
+                        <td class="p-2">
+                           <select @change="updateReqStatus(r[0], $event.target.value)" class="w-full p-1.5 border rounded outline-none font-bold cursor-pointer transition" :class="{'bg-green-100 text-green-700 border-green-200':r[3]==='Done','bg-yellow-100 text-yellow-700 border-yellow-200':r[3]==='Pending','bg-red-100 text-red-700 border-red-200':r[3]==='Rejected'}">
+                             <option value="Pending" :selected="r[3]==='Pending'">รอรับเรื่อง</option>
+                             <option value="Done" :selected="r[3]==='Done'">แก้ไขแล้ว</option>
+                             <option value="Rejected" :selected="r[3]==='Rejected'">ปฏิเสธ</option>
+                           </select>
+                        </td>
+                      </tr>
+                      <tr v-if="allRequests.length === 0"><td colspan="4" class="p-4 text-center text-gray-400 font-sans">ยังไม่มีคำร้องเข้ามา</td></tr>
+                   </tbody>
+                 </table>
+               </div>
+             </div>
+
+             <!-- Database & Code Links -->
+             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+               <div class="border rounded-xl p-5 border-gray-200 bg-white shadow-sm flex flex-col justify-between group hover:border-blue-300 transition">
+                 <div>
+                   <h4 class="font-black text-gray-800 text-sm mb-1 uppercase"><i class="fa-solid fa-database text-blue-500 mr-2"></i>Master Database (ตารางข้อมูล)</h4>
+                   <p class="text-[10px] text-gray-500 mb-4 leading-relaxed font-mono">ทำงานบน Google Sheets ใช้ Array Indexing ในการอ้างอิงข้อมูล ห้ามสลับคอลัมน์ในแท็บ Transactions เด็ดขาด</p>
+                 </div>
+                 <a v-if="ssUrl" :href="ssUrl" target="_blank" class="px-4 py-2 bg-gray-100 text-blue-600 text-xs font-bold rounded-lg hover:bg-blue-50 transition text-center group-hover:bg-blue-500 group-hover:text-white">เปิดฐานข้อมูล <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i></a>
+               </div>
+               <div class="border rounded-xl p-5 border-gray-200 bg-white shadow-sm flex flex-col justify-between group hover:border-orange-300 transition">
+                 <div>
+                   <h4 class="font-black text-gray-800 text-sm mb-1 uppercase"><i class="fa-brands fa-js text-orange-500 mr-2"></i>Source Code (โค้ดหลังบ้าน)</h4>
+                   <p class="text-[10px] text-gray-500 mb-4 leading-relaxed font-mono">Google Apps Script (V8 Engine) ทำงานผ่าน google.script.run ฟังก์ชันออก PDF อยู่ใน generatePDF()</p>
+                 </div>
+                 <a v-if="ssUrl" :href="ssUrl.replace('/edit', '') + '/edit'" target="_blank" class="px-4 py-2 bg-gray-100 text-orange-600 text-xs font-bold rounded-lg hover:bg-orange-50 transition text-center group-hover:bg-orange-500 group-hover:text-white">เปิด Code Editor <i class="fa-solid fa-terminal ml-1"></i></a>
+               </div>
+             </div>
+
+             <!-- Flowcharts (Thai Localization) -->
+             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+               
+               <!-- Business Logic -->
+               <div class="bg-gray-900 text-gray-300 p-6 rounded-2xl shadow-xl text-xs relative overflow-hidden">
+                 <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500 opacity-5 rounded-bl-full"></div>
+                 <p class="text-blue-400 font-bold mb-4 text-sm uppercase tracking-wider border-b border-gray-700 pb-2"><i class="fa-solid fa-briefcase mr-2"></i>กระบวนการทำงาน (Business Flow)</p>
+                 
+                 <div class="flex flex-col space-y-0 text-[11px]">
+                   <div class="flex items-start">
+                     <div class="w-6 h-6 rounded bg-gray-700 border border-gray-600 text-white flex justify-center items-center font-bold mr-3 z-10 shrink-0">1</div>
+                     <div class="pb-4 border-l-2 border-dashed border-gray-600 pl-4 -ml-[25px]">
+                       <p class="text-white font-bold ml-6">นำเข้าข้อมูล (ฝ่ายการเงิน)</p>
+                       <p class="text-gray-400 mt-1 ml-6 leading-relaxed">กรอกข้อมูลผู้ชำระเงินและยอดเงิน (ระบบจะบีบอัดที่อยู่เป็น JSON อัตโนมัติ)<br><span class="text-yellow-500 bg-yellow-500/10 px-1 rounded font-mono text-[9px] mt-1 inline-block">สถานะ: รอจัดหมวด</span></p>
+                     </div>
+                   </div>
+                   <div class="flex items-start">
+                     <div class="w-6 h-6 rounded bg-gray-700 border border-gray-600 text-white flex justify-center items-center font-bold mr-3 z-10 shrink-0">2</div>
+                     <div class="pb-4 border-l-2 border-dashed border-gray-600 pl-4 -ml-[25px]">
+                       <p class="text-white font-bold ml-6">ตรวจสอบและลงบัญชี (ฝ่ายบัญชี)</p>
+                       <p class="text-gray-400 mt-1 ml-6 leading-relaxed">บัญชีตรวจสอบความถูกต้องและเลือกหมวดหมู่บัญชีตามผังที่กำหนดไว้<br><span class="text-green-400 bg-green-400/10 px-1 rounded font-mono text-[9px] mt-1 inline-block">สถานะ: จัดหมวดแล้ว</span></p>
+                     </div>
+                   </div>
+                   <div class="flex items-start">
+                     <div class="w-6 h-6 rounded bg-gray-700 border border-gray-600 text-white flex justify-center items-center font-bold mr-3 z-10 shrink-0">3</div>
+                     <div class="pb-4 border-l-2 border-dashed border-gray-600 pl-4 -ml-[25px]">
+                       <p class="text-white font-bold ml-6">ส่งออกข้อมูล (Output & Export)</p>
+                       <p class="text-gray-400 mt-1 ml-6 leading-relaxed">ระบบนำข้อมูลไปสร้างเอกสาร PDF (ใบเสร็จ) หรือแปลงเป็นตาราง CSV</p>
+                     </div>
+                   </div>
+                   <div class="flex items-start">
+                     <div class="w-6 h-6 rounded bg-tijBlue border border-blue-500 text-white flex justify-center items-center font-bold mr-3 z-10 shrink-0"><i class="fa-solid fa-chart-pie"></i></div>
+                     <div class="pl-4 -ml-[25px]">
+                       <p class="text-white font-bold ml-6">หน้าสรุปผู้บริหาร (Executive View)</p>
+                       <p class="text-blue-200 mt-1 ml-6 leading-relaxed">ผู้บริหารติดตามผลประกอบการและดูภาพรวมได้จากแดชบอร์ดแบบ Realtime</p>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+
+               <!-- System Architecture -->
+               <div class="bg-gray-900 text-gray-300 p-6 rounded-2xl shadow-xl text-xs relative overflow-hidden flex flex-col justify-between">
+                 <div class="absolute top-0 right-0 w-32 h-32 bg-orange-500 opacity-5 rounded-bl-full"></div>
+                 <div>
+                   <p class="text-orange-400 font-bold mb-4 text-sm uppercase tracking-wider border-b border-gray-700 pb-2"><i class="fa-solid fa-server mr-2"></i>โครงสร้างระบบทางไอที (Architecture)</p>
+                   
+                   <div class="flex flex-col items-center mt-6 font-mono text-[10px]">
+                     <!-- Frontend -->
+                     <div class="border border-blue-500 bg-blue-900/20 px-4 py-2 rounded-lg text-center w-3/4 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
+                       <strong class="text-blue-300 block text-xs">หน้าบ้าน (Frontend)</strong>
+                       <span class="text-gray-400">Vue.js / Tailwind CSS ทำงานเป็น SPA</span>
+                     </div>
+                     
+                     <div class="h-6 border-l-2 border-dashed border-gray-600 my-1 relative w-full flex justify-center">
+                        <span class="absolute top-1/2 -translate-y-1/2 bg-gray-900 px-2 text-[9px] text-gray-500">API: google.script.run</span>
+                     </div>
+                     
+                     <!-- Backend -->
+                     <div class="border border-orange-500 bg-orange-900/20 px-4 py-2 rounded-lg text-center w-3/4 shadow-[0_0_15px_rgba(249,115,22,0.1)]">
+                       <strong class="text-orange-300 block text-xs">หลังบ้าน (Backend)</strong>
+                       <span class="text-gray-400">Google Apps Script ประมวลผลและส่งค่า</span>
+                     </div>
+                     
+                     <div class="flex w-3/4 mt-1">
+                       <div class="w-1/2 flex flex-col items-center border-r-2 border-t-2 border-dashed border-gray-600 rounded-tr-lg mt-3 h-4"></div>
+                       <div class="w-1/2 flex flex-col items-center border-l-2 border-t-2 border-dashed border-gray-600 rounded-tl-lg mt-3 h-4"></div>
+                     </div>
+                     
+                     <!-- Database & Storage -->
+                     <div class="flex gap-4 w-full px-4">
+                       <div class="flex-1 border border-green-500 bg-green-900/20 py-2 rounded-lg text-center">
+                         <strong class="text-green-300 block mb-1">ฐานข้อมูลหลัก</strong>
+                         <span class="text-gray-400 block"><i class="fa-solid fa-table"></i> Google Sheets</span>
+                       </div>
+                       <div class="flex-1 border border-red-500 bg-red-900/20 py-2 rounded-lg text-center">
+                         <strong class="text-red-300 block mb-1">เก็บไฟล์เอกสาร</strong>
+                         <span class="text-gray-400 block"><i class="fa-brands fa-google-drive"></i> Google Drive</span>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+                 
+                 <div class="mt-6 pt-3 border-t border-gray-700">
+                    <p class="text-yellow-400 font-bold mb-2">แผนงานในอนาคต (Roadmap):</p>
+                    <ul class="space-y-1 text-gray-400 font-mono text-[9px]">
+                       <li><i class="fa-regular fa-square mr-1"></i> ย้ายฐานข้อมูลไปที่ระบบ Firebase เพื่อทำ Realtime Sync</li>
+                       <li><i class="fa-regular fa-square mr-1"></i> ส่งแจ้งเตือนการสร้างรายการใหม่ผ่าน LINE Notify ทันที</li>
+                       <li><i class="fa-regular fa-square mr-1"></i> นำระบบ OCR มาใช้อ่านใบเสร็จให้อัตโนมัติ (ลดการกรอกมือ)</li>
+                    </ul>
+                 </div>
+               </div>
+
+             </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Modal จัดการเงินกู้ (Loan Edit/View Modal) -->
+    <div v-if="showLoanEditModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden animate-fade-in">
+        <div class="bg-gray-800 px-6 py-4 flex justify-between items-center shadow-md">
+          <h3 class="font-bold text-lg text-white"><i class="fa-solid fa-file-signature text-tijBlue mr-2"></i>รายละเอียดเอกสาร: <span class="text-tijBlue font-mono">{{ loanForm.contractNo }}</span></h3>
+          <button @click="showLoanEditModal = false" class="text-gray-400 hover:text-red-400 transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <form @submit.prevent="submitLoanForm" class="p-6 space-y-4">
+          <div>
+            <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">หมวดหมู่</label>
+            <select v-model="loanForm.category" required class="w-full p-2 border rounded text-sm bg-gray-50 focus:border-tijBlue outline-none">
+              <option v-for="t in loanConfig.loanCategories" :key="t" :value="t">{{ t }}</option>
+              <option value="อื่นๆ">อื่นๆ</option>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div><label class="text-xs font-bold text-gray-500 mb-1 block uppercase">ชื่อผู้รับเงิน</label><input type="text" v-model="loanForm.borrowerName" required class="w-full p-2 border rounded text-sm bg-gray-50 focus:border-tijBlue outline-none"></div>
+            <div><label class="text-xs font-bold text-gray-500 mb-1 block uppercase">อีเมล</label><input type="email" v-model="loanForm.borrowerEmail" required class="w-full p-2 border rounded text-sm bg-gray-50 font-mono focus:border-tijBlue outline-none"></div>
+            <div><label class="text-xs font-bold text-gray-500 mb-1 block uppercase">จำนวนเงิน (บาท)</label><input type="number" step="0.01" v-model="loanForm.amount" required class="w-full p-2 border rounded font-black text-gray-800 bg-blue-50 focus:border-tijBlue outline-none"></div>
+            <div>
+              <label class="block text-xs font-bold text-gray-500 mb-1 uppercase">วันที่รับเงิน</label>
+              <div class="relative"><input type="date" v-model="loanForm.borrowDate" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"><input type="text" :value="formatThaiDateFull(loanForm.borrowDate)" readonly class="w-full p-2 border rounded text-sm bg-gray-50 pointer-events-none"></div>
+            </div>
+            <div class="col-span-2">
+              <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">หมายเหตุ / วัตถุประสงค์ <span v-if="loanForm.category === 'อื่นๆ'" class="text-red-500">*</span></label>
+              <input type="text" v-model="loanForm.note" :required="loanForm.category === 'อื่นๆ'" class="w-full p-2 border rounded text-sm bg-gray-50 focus:border-tijBlue outline-none">
+            </div>
+            <div class="col-span-2">
+              <label class="block text-xs font-bold text-gray-500 mb-1 uppercase">แนบไฟล์หลักฐาน (รูปภาพ หรือ PDF)</label>
+              <div class="flex items-center gap-3">
+                <input type="file" @change="handleFileUpload" accept="image/*,.pdf" class="block w-full text-sm text-gray-500 file:mr-4 file:py-1.5 file:px-4 file:rounded file:border-0 file:text-xs file:font-bold file:bg-gray-200 file:text-gray-700 cursor-pointer border rounded p-1 bg-white">
+                <a v-if="loanForm.attachmentUrl" :href="loanForm.attachmentUrl" target="_blank" class="shrink-0 text-xs font-bold text-tijBlue hover:underline"><i class="fa-solid fa-up-right-from-square mr-1"></i> ดูไฟล์แนบ</a>
+              </div>
+            </div>
+            <div class="col-span-2 mt-2 pt-2 border-t border-gray-100">
+              <label class="block text-xs font-bold text-red-500 mb-1 uppercase">กำหนดชำระคืน / เคลียร์ยอด (Due Date)</label>
+              <div class="relative"><input type="date" v-model="loanForm.dueDate" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"><input type="text" :value="formatThaiDateFull(loanForm.dueDate)" readonly class="w-full p-2 border border-red-200 rounded text-sm bg-red-50 text-red-700 font-bold pointer-events-none"></div>
+            </div>
+            <div class="col-span-2">
+              <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">สถานะรายการ (Active / Closed)</label>
+              <select v-model="loanForm.status" class="w-full p-2 border rounded font-bold text-sm bg-white text-gray-800 outline-none focus:border-tijBlue">
+                <option value="Active">กำลังดำเนินการ (Active)</option>
+                <option value="Closed">คืนเงิน / เคลียร์ยอดแล้ว (Closed)</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <button type="button" @click="showLoanEditModal = false" class="px-5 py-2 bg-gray-100 border rounded font-bold text-gray-600 text-sm hover:bg-gray-200 transition">ปิด</button>
+            <button type="submit" class="px-6 py-2 bg-gray-800 text-white font-bold rounded shadow text-sm hover:bg-gray-900 transition"><i class="fa-solid fa-save mr-1"></i> อัปเดตข้อมูล</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal จัดการลูกค้า (สร้าง/แก้ไข) -->
+    <div v-if="showCustomerModal" class="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-fade-in">
+        <div class="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
+          <h3 class="font-bold text-lg text-gray-800"><i class="fa-solid fa-address-book text-tijBlue mr-2"></i>{{ cusForm.id ? 'แก้ไขข้อมูลลูกค้า' : 'เพิ่มลูกค้าใหม่' }}</h3>
+          <button @click="showCustomerModal = false" class="text-gray-400 hover:text-red-500 transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <form @submit.prevent="submitCustomerForm" class="p-6 space-y-4">
+          <div class="bg-blue-50 border border-blue-200 text-blue-800 text-xs p-3 rounded-lg flex items-start mb-2">
+             <i class="fa-solid fa-lightbulb mt-0.5 mr-2 text-yellow-500"></i>
+             <p><strong>คำแนะนำ:</strong> แนะนำให้กรอกข้อมูลที่อยู่ให้ครบถ้วนทุกช่อง เพื่อความสมบูรณ์ในการพิมพ์เอกสาร (หากไม่มีข้อมูล สามารถเว้นว่างไว้ได้ครับ)</p>
+          </div>
+          <div><label class="text-xs font-bold text-gray-500 mb-1 block uppercase">ชื่อลูกค้า / องค์กร <span class="text-red-500">*</span></label><input type="text" v-model="cusForm.name" required class="w-full p-2.5 border border-gray-300 rounded-lg focus:border-tijBlue"></div>
+          <div><label class="text-xs font-bold text-gray-500 mb-1 block uppercase">เลขประจำตัวผู้เสียภาษี</label><input type="text" v-model="cusForm.taxId" maxlength="13" class="w-full p-2.5 border border-gray-300 rounded-lg focus:border-tijBlue font-mono"></div>
+          <div>
+            <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">รายละเอียดที่อยู่แบบแยกส่วน</label>
+            <div class="grid grid-cols-2 gap-2 text-sm bg-gray-50 p-3 rounded-lg border border-gray-200 shadow-inner">
+               <div class="col-span-2"><input v-model="cusForm.addrHelper.line1" placeholder="เลขที่/ซอย/ถนน" class="w-full p-2 border border-gray-200 rounded outline-none focus:border-tijBlue"></div>
+               <div><input v-model="cusForm.addrHelper.subDistrict" placeholder="แขวง/ตำบล" class="w-full p-2 border border-gray-200 rounded outline-none focus:border-tijBlue"></div>
+               <div><input v-model="cusForm.addrHelper.district" placeholder="เขต/อำเภอ" class="w-full p-2 border border-gray-200 rounded outline-none focus:border-tijBlue"></div>
+               <div><input v-model="cusForm.addrHelper.province" placeholder="จังหวัด" class="w-full p-2 border border-gray-200 rounded outline-none focus:border-tijBlue"></div>
+               <div><input v-model="cusForm.addrHelper.zip" placeholder="รหัสไปรษณีย์" class="w-full p-2 border border-gray-200 rounded outline-none focus:border-tijBlue"></div>
+            </div>
+          </div>
+          <div class="pt-4 border-t flex justify-end gap-3">
+            <button type="button" @click="showCustomerModal = false" class="px-5 py-2.5 border border-gray-300 rounded-lg text-gray-600 font-bold hover:bg-gray-50 text-sm">ยกเลิก</button>
+            <button type="submit" class="px-6 py-2.5 bg-gray-800 text-white rounded-lg font-bold shadow hover:bg-gray-900 text-sm">บันทึกข้อมูล</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal Edit Transaction (หน้าต่างแก้ไขรายการบัญชี) -->
+    <div v-if="showEditModal" class="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar animate-fade-in">
+        <div class="sticky top-0 bg-gray-800 text-white px-6 py-4 flex justify-between items-center z-10 shadow-md">
+          <h3 class="text-xl font-bold"><i class="fa-solid fa-pen-to-square text-tijOrange mr-2"></i>จัดการและแก้ไขข้อมูล</h3>
+          <button @click="showEditModal = false" class="text-gray-400 hover:text-red-400 transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <div class="p-8">
+          <form @submit.prevent="submitEditForm" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">วันที่ทำรายการ</label>
+                <div class="relative">
+                  <input type="date" v-model="editForm.transactionDate" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 date-overlay" @click="$event.target.showPicker && $event.target.showPicker()">
+                  <input type="text" :value="formatThaiDateFull(editForm.transactionDate)" readonly class="w-full p-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 pointer-events-none font-bold">
+                </div>
+              </div>
+              <div><label class="text-xs font-bold text-gray-500 mb-1 block uppercase">ผู้ชำระ/รับเงิน</label><input type="text" v-model="editForm.payerName" required class="w-full p-2.5 border border-gray-300 rounded-lg focus:border-tijBlue shadow-inner"></div>
+              <div><label class="text-xs font-bold text-gray-500 mb-1 block uppercase">จำนวนเงิน (บาท)</label><input type="number" step="0.01" v-model="editForm.amount" required class="w-full p-2.5 border border-gray-300 rounded-lg focus:border-tijBlue font-black text-tijBlue text-lg shadow-inner"></div>
+              <div><label class="text-xs font-bold text-gray-500 mb-1 block uppercase">วิธีชำระ</label><select v-model="editForm.paymentMethod" class="w-full p-2.5 border border-gray-300 rounded-lg focus:border-tijBlue shadow-inner"><option>โอนผ่านธนาคาร</option><option>เงินสด</option><option>เช็ค</option></select></div>
+            </div>
+            
+            <div class="bg-blue-50/50 p-5 rounded-xl border border-blue-100 mt-4">
+              <h4 class="font-bold text-gray-800 mb-3 flex justify-between items-center text-sm">
+                <span><i class="fa-solid fa-sitemap text-tijBlue mr-1"></i> จัดหมวดหมู่ทางบัญชี</span>
+                <span v-if="!hasPerm('editCat')" class="text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded font-bold border border-red-200 uppercase tracking-wider"><i class="fa-solid fa-lock mr-1"></i>เฉพาะฝ่ายบัญชี</span>
+              </h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <select v-model="editForm.category" @change="resetHierarchy(1)" :disabled="!hasPerm('editCat')" class="p-2.5 border border-gray-300 rounded-lg shadow-inner text-sm" :class="hasPerm('editCat') ? 'bg-white focus:border-tijBlue' : 'bg-gray-100 text-gray-400 cursor-not-allowed'">
+                  <option value="รายรับ">รายรับ</option><option value="รายจ่าย">รายจ่าย</option>
+                </select>
+                <select v-model="editForm.group" @change="resetHierarchy(2)" :disabled="!hasPerm('editCat')" class="p-2.5 border border-gray-300 rounded-lg shadow-inner text-sm" :class="hasPerm('editCat') ? 'bg-white focus:border-tijBlue' : 'bg-gray-100 text-gray-400 cursor-not-allowed'"><option value="-">- ว่าง -</option><option v-for="(v, k) in (config[editForm.category] || {})" :key="k">{{k}}</option></select>
+                <select v-model="editForm.type" @change="resetHierarchy(3)" :disabled="!hasPerm('editCat')" class="p-2.5 border border-gray-300 rounded-lg shadow-inner text-sm" :class="hasPerm('editCat') ? 'bg-white focus:border-tijBlue' : 'bg-gray-100 text-gray-400 cursor-not-allowed'"><option value="-">- ว่าง -</option><option v-for="(v, k) in (config[editForm.category]?.[editForm.group] || {})" :key="k">{{k}}</option></select>
+                <select v-model="editForm.item" :disabled="!hasPerm('editCat')" class="p-2.5 border border-gray-300 rounded-lg shadow-inner text-sm" :class="hasPerm('editCat') ? 'bg-white focus:border-tijBlue' : 'bg-gray-100 text-gray-400 cursor-not-allowed'"><option value="-">- ว่าง -</option><option v-for="item in (config[editForm.category]?.[editForm.group]?.[editForm.type] || [])">{{item}}</option></select>
+              </div>
+            </div>
+            
+            <div>
+               <label class="text-xs font-bold text-gray-500 mb-1 block uppercase">เป็นค่า (รายละเอียดงาน)</label>
+               <textarea v-model="editForm.description" rows="2" class="w-full p-3 border border-gray-300 rounded-lg focus:border-tijBlue shadow-inner text-sm"></textarea>
+            </div>
+            
+            <div class="flex justify-end gap-3 pt-6 border-t border-gray-100">
+              <button type="button" @click="showEditModal = false" class="px-6 py-2.5 bg-white border border-gray-300 text-gray-600 font-bold rounded-lg hover:bg-gray-50 transition text-sm">ยกเลิก</button>
+              <button type="submit" class="px-8 py-2.5 bg-tijBlue text-white font-bold rounded-lg shadow-md hover:bg-blue-600 transition flex items-center text-sm"><i class="fa-solid fa-save mr-2"></i> อัปเดตข้อมูล</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal กรอกอีเมลสำหรับคนนอกองค์กร -->
+    <div v-if="showEmailPromptModal" class="fixed inset-0 bg-black/70 z-[80] flex items-center justify-center p-4 backdrop-blur-md">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center transform transition-all border-t-4 border-tijBlue">
+        <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
+          <i class="fa-solid fa-user-lock text-4xl text-tijBlue"></i>
+        </div>
+        <h3 class="text-2xl font-bold text-gray-800 mb-2">ระบุตัวตนผู้ใช้งาน</h3>
+        <p class="text-sm text-gray-500 mb-6">กรุณากรอกอีเมลของท่านเพื่อยืนยันตัวตนเข้าระบบ</p>
+        <form @submit.prevent="submitEmailPrompt" class="space-y-4">
+          <input type="email" v-model="promptEmail" required placeholder="เช่น name@example.com" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-tijBlue outline-none transition text-center font-medium">
+          <button type="submit" class="w-full py-3 bg-tijBlue text-white font-bold rounded-xl shadow-lg transition hover:bg-blue-600">เข้าสู่ระบบ</button>
+        </form>
+        <div class="mt-4 pt-4 border-t border-gray-100">
+          <button @click="switchAccount" class="text-sm text-gray-500 hover:text-tijOrange underline">หรือ สลับไปใช้บัญชีองค์กร @tijthailand.org</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal แจ้งเตือนความสำเร็จ (Success Alert) - Enhanced with message types -->
+    <div v-if="showSuccessModal" class="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 text-center transform transition-all animate-fade-in" :class="{
+        'border-l-4 border-green-500': successMessageType === 'success',
+        'border-l-4 border-yellow-500': successMessageType === 'warning',
+        'border-l-4 border-red-500': successMessageType === 'error'
+      }">
+        <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5" :class="{
+          'bg-green-100': successMessageType === 'success',
+          'bg-yellow-100': successMessageType === 'warning',
+          'bg-red-100': successMessageType === 'error'
+        }">
+          <i :class="{
+            'fa-solid fa-check text-4xl text-green-500': successMessageType === 'success',
+            'fa-solid fa-triangle-exclamation text-4xl text-yellow-600': successMessageType === 'warning',
+            'fa-solid fa-xmark text-4xl text-red-500': successMessageType === 'error'
+          }"></i>
+        </div>
+        <h3 class="text-xl font-bold text-gray-800 mb-2">{{ successMessage }}</h3>
+        <button @click="showSuccessModal = false" :class="{
+          'bg-green-600 hover:bg-green-700': successMessageType === 'success',
+          'bg-yellow-600 hover:bg-yellow-700': successMessageType === 'warning',
+          'bg-red-600 hover:bg-red-700': successMessageType === 'error',
+          'bg-gray-800 hover:bg-gray-900': successMessageType === 'success'
+        }" class="w-full py-3 text-white font-bold rounded-xl shadow transition mt-4">ตกลง</button>
+      </div>
+    </div>
+
+    <!-- View Modal -->
+    <div v-if="showViewModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden animate-fade-in">
+        <div class="bg-gray-800 text-white px-6 py-4 flex justify-between items-center shadow-md">
+          <h3 class="font-bold text-lg"><i class="fa-solid fa-file-lines text-tijBlue mr-2"></i>รายละเอียดรายการ</h3>
+          <button @click="showViewModal = false" class="text-gray-400 hover:text-red-400 transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <div class="p-8 space-y-5">
+          <div v-if="viewItem[16] > 1" class="bg-yellow-50 border border-yellow-200 p-3 rounded-lg flex items-start gap-3">
+            <i class="fa-solid fa-circle-exclamation text-yellow-500 mt-0.5"></i>
+            <div class="text-sm"><p class="font-bold text-yellow-800">รายการนี้มีการแก้ไข (เวอร์ชัน {{ viewItem[16] }})</p><p class="text-yellow-700">อัปเดตโดย: <span class="font-mono bg-white px-1 border rounded">{{ viewItem[14] }}</span></p></div>
+          </div>
+          <div v-else-if="viewItem[8] !== '-' && viewItem[8] !== ''" class="bg-green-50 border border-green-200 p-3 rounded-lg flex items-start gap-3">
+             <i class="fa-solid fa-circle-check text-green-500 mt-0.5"></i>
+             <div class="text-sm text-green-800"><p class="font-bold">รายการจัดหมวดหมู่เรียบร้อยแล้ว</p><p>บันทึกโดย: <span class="font-mono bg-white px-1 border rounded">{{ viewItem[14] }}</span></p></div>
+          </div>
+          <div v-else class="bg-red-50 border border-red-200 p-3 rounded-lg flex items-start gap-3">
+             <i class="fa-solid fa-circle-exclamation text-red-500 mt-0.5"></i>
+             <div class="text-sm text-red-800"><p class="font-bold">รายการยังไม่จัดหมวดหมู่</p><p>บันทึกโดย: <span class="font-mono bg-white px-1 border rounded">{{ viewItem[14] }}</span></p></div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-y-5 gap-x-6 text-sm bg-gray-50 p-6 rounded-xl border border-gray-200 shadow-inner">
+            <div><span class="block text-gray-500 text-[10px] font-bold uppercase mb-1">วันที่ตามใบเสร็จ</span><strong class="text-gray-800 text-base">{{ formatThaiDateFull(viewItem[1]) }}</strong></div>
+            <div><span class="block text-gray-500 text-[10px] font-bold uppercase mb-1">เลขที่เอกสาร</span><strong class="font-mono text-tijBlue text-base">{{ formatDocNo(viewItem[7], viewItem[2], viewItem[3]) }}</strong></div>
+            <div class="col-span-2"><span class="block text-gray-500 text-[10px] font-bold uppercase mb-1">ผู้ชำระเงิน/รับเงิน</span><strong class="text-xl text-gray-900">{{ viewItem[4] }}</strong></div>
+            <div><span class="block text-gray-500 text-[10px] font-bold uppercase mb-1">เลขประจำตัวผู้เสียภาษี</span><strong class="font-mono">{{ viewItem[5] || '-' }}</strong></div>
+            <div><span class="block text-gray-500 text-[10px] font-bold uppercase mb-1">วิธีชำระเงิน</span><strong>{{ viewItem[12] }}</strong></div>
+            <div class="col-span-2"><span class="block text-gray-500 text-[10px] font-bold uppercase mb-1">ที่อยู่</span><p class="text-gray-800">{{ formatAddressObject(viewItem[6]) || 'ไม่มีข้อมูลที่อยู่' }}</p></div>
+            <div class="col-span-2 pt-3 border-t border-gray-200">
+              <span class="block text-gray-500 text-[10px] font-bold uppercase mb-1">หมวดหมู่ทางบัญชี (Hierarchy)</span>
+              <div class="flex items-center font-semibold text-xs mt-1 text-tijOrange">
+                <span class="bg-white border px-2 py-1 rounded shadow-sm">{{ viewItem[7] }}</span> <i class="fa-solid fa-chevron-right mx-2 text-gray-300"></i> 
+                <span class="bg-white border px-2 py-1 rounded shadow-sm">{{ viewItem[8] }}</span> <i class="fa-solid fa-chevron-right mx-2 text-gray-300"></i> 
+                <span class="bg-white border px-2 py-1 rounded shadow-sm">{{ viewItem[9] }}</span> <i class="fa-solid fa-chevron-right mx-2 text-gray-300"></i> 
+                <span class="bg-white border px-2 py-1 rounded shadow-sm text-gray-800">{{ viewItem[10] }}</span>
+              </div>
+            </div>
+            <div class="col-span-2"><span class="block text-gray-500 text-[10px] font-bold uppercase mb-1">เป็นค่า</span><p class="text-gray-800 italic">"{{ viewItem[13] || '-' }}"</p></div>
+          </div>
+          <div class="mt-4 pt-4 border-t flex items-end justify-end">
+             <span class="text-gray-500 text-xs font-bold uppercase mr-4 mb-1">จำนวนเงินสุทธิ</span>
+             <span class="text-3xl font-black" :class="viewItem[7] === 'รายจ่าย' ? 'text-tijOrange' : 'text-tijBlue'">
+               {{ viewItem[7] === 'รายจ่าย' ? '-' : '' }}฿ {{ viewItem[11] | formatNumber }}
+             </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Print Modal -->
+    <div v-if="showPrintModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-xl w-96 overflow-hidden animate-fade-in">
+        <div class="bg-gray-800 text-white px-5 py-4 flex justify-between">
+          <h3 class="font-bold"><i class="fa-solid fa-print mr-2 text-tijBlue"></i>พิมพ์เอกสาร (PDF)</h3>
+          <button @click="showPrintModal = false" class="hover:text-red-400"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 space-y-3">
+          <div class="bg-blue-50 p-4 rounded-xl text-sm text-blue-800 mb-6 border border-blue-100 shadow-inner">
+             <p class="font-bold mb-1">{{printItem[4]}}</p>
+             <p class="text-xs text-gray-500 font-mono"><i class="fa-solid fa-file-invoice mr-1"></i>{{ formatDocNo(printItem[7], printItem[2], printItem[3]) }}</p>
+          </div>
+          <button @click="generatePDF('Template_1')" class="w-full text-left p-4 border rounded-xl hover:border-tijBlue hover:shadow-md transition flex items-center font-bold text-gray-700"><i class="fa-solid fa-file-pdf text-red-500 text-2xl w-10"></i> พิมพ์เอกสาร "ตัวจริง"</button>
+          <button @click="generatePDF('Template_2')" class="w-full text-left p-4 border rounded-xl hover:border-tijBlue hover:shadow-md transition flex items-center font-bold text-gray-700"><i class="fa-solid fa-file-pdf text-red-500 text-2xl w-10"></i> พิมพ์เอกสาร "สำเนา"</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Result PDF Modal -->
+    <div v-if="pdfResult" class="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-8 text-center transform transition-all border-t-4 border-red-500 animate-fade-in">
+        <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-file-pdf text-3xl text-red-500"></i></div>
+        <h3 class="text-xl font-bold text-gray-800 mb-2">สร้างเอกสารสำเร็จ!</h3>
+        <p class="text-sm text-gray-500 mb-6">เอกสารพร้อมใช้งานแล้ว<br><span class="text-red-500 text-xs">*(ไฟล์บนระบบจะถูกลบทิ้งเมื่อกดปุ่มด้านล่าง)</span></p>
+        <div class="space-y-3">
+          <button @click="openAndDeletePDF" class="w-full py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl shadow transition flex items-center justify-center">
+            <i class="fa-solid fa-arrow-up-right-from-square mr-2"></i> เปิดไฟล์ PDF และลบทันที
+          </button>
+          <button @click="pdfResult = null" class="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition">ปิด</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ================= VUE.JS Scripts ================= -->
+  <script>
+    const todayStr = new Date().toISOString().split('T')[0];
+    let chartTrend = null; 
+    let chartPie = null;
+    
+    // ฟังก์ชันแปลง HEX ให้รองรับ Opacity สำหรับ Chart.js
+    let hexToRgba = (hex, alpha) => {
+        if(!hex) return `rgba(91, 155, 213, ${alpha})`;
+        let r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+
+    new Vue({
+      el: '#app',
+      data: {
+        globalLoading: true, 
+        loadingMessage: 'กำลังโหลดระบบ Finance Core...',
+        currentTab: 'dashboard', 
+        user: { email: '', role: '' }, 
+        appUrl: '', ssUrl: '', nextDocObj: null,
+        config: {}, rawConfig: [], transactions: [], users: [], customers: [], allRequests: [],
+        form: { id: '', transactionDate: todayStr, bookNo: '', receiptNo: '', isManual: false, payerName: '', taxId: '', address: '', category: 'รายรับ', group: '-', type: '-', item: '-', amount: '', paymentMethod: 'โอนผ่านธนาคาร', description: '' },
+        editForm: {}, showEditModal: false, showPrintModal: false, printItem: null, showViewModal: false, viewItem: {},
+        filters: { search: '', category: '', startDate: '', endDate: '' },
+        showSuccessModal: false, successMessage: '', successMessageType: 'success', pdfResult: null, 
+        showEmailPromptModal: false, promptEmail: '', clientEmail: localStorage.getItem('tij_finance_email') || '',
+        dashStartDate: '', dashEndDate: '', dashBreakdownType: 'รายรับ', sortKey: 17, sortDesc: true,
+        currentListView: 'active', adminSubTab: 'dashboard',
+        addrHelper: { line1: '', subDistrict: '', district: '', province: '', zip: '' },
+        showAddCustomerPrompt: false, isAutoFilled: false,
+        showCustomerModal: false, cusForm: { id: '', name: '', taxId: '', addrHelper: { line1: '', subDistrict: '', district: '', province: '', zip: '' } },
+        newCat: { category: 'รายรับ', group: '', type: '', item: '' }, newRoleName: '',
+        
+        // === Loan System Data ===
+        todayStr: new Date().toISOString().split('T')[0],
+        loans: [],
+        loanSubTab: 'dashboard',
+        loanForm: { id: '', contractNo: '', runningNo: '', year: '', isManual: false, category: '', note: '', borrowerName: '', borrowerEmail: '', amount: '', borrowDate: new Date().toISOString().split('T')[0], dueDate: '', status: 'Active', fileBase64: null, fileName: '', attachmentUrl: '' },
+        showLoanEditModal: false,
+        loanFilters: { search: '', status: '' },
+        loanSortKey: 1, loanSortDesc: true,
+        nextLoanDoc: null, selectedLoans: [],
+        newAdvanceType: '', newReminderDay: '',
+        loanConfig: { reminderDays: [5, 2], loanCategories: ['ค่าใช้จ่ายประชุม', 'ค่าเดินทาง', 'ค่าเลี้ยงรับรอง'] },
+        
+        // ค่าเริ่มต้น
+        globalLayout: { 
+          cards: true, cashFlow: true, trend: true, pie: true, recent: true, topExpense: true, topIncome: true, 
+          theme: { primary: '#5B9BD5', secondary: '#ED7D31' } // กลับไปใช้สีแบบ Index.txt
+        },
+        rolePerms: {}, widgetRequestText: '',
+        availableWidgets: [
+           { id: 'cards', title: 'การ์ดสรุปยอดเงิน', desc: 'ยอดรายรับ รายจ่าย ยอดคงเหลือ และจำนวนรายการ', icon: 'fa-money-check-dollar' },
+           { id: 'cashFlow', title: 'สัดส่วนกระแสเงินสด', desc: 'แถบสีแสดงสัดส่วนรายรับ vs รายจ่าย', icon: 'fa-money-bill-transfer' },
+           { id: 'trend', title: 'กราฟแนวโน้ม (Line Chart)', desc: 'แสดงแนวโน้มการเงินในแต่ละวัน', icon: 'fa-chart-line' },
+           { id: 'pie', title: 'กราฟสัดส่วน (Pie Chart)', desc: 'แสดงที่มาของเงินแบ่งตามหมวดหมู่', icon: 'fa-chart-pie' },
+           { id: 'recent', title: '5 รายการล่าสุด', desc: 'ตารางแสดงรายการอัปเดตล่าสุด', icon: 'fa-clock-rotate-left' },
+           { id: 'topIncome', title: '5 อันดับรายรับ', desc: 'จัดอันดับยอดเงินเข้าสูงสุด', icon: 'fa-arrow-up-short-wide' },
+           { id: 'topExpense', title: '5 อันดับรายจ่าย', desc: 'จัดอันดับยอดเงินออกสูงสุด', icon: 'fa-arrow-down-short-wide' }
+        ]
+      },
+      computed: {
+        isAdmin() { return this.user.role === 'Admin'; }, 
+        canViewList() { return this.hasPerm('viewList'); },
+        canManageTrash() { return this.hasPerm('manageTrash'); },
+        canAccessSettings() { return this.hasPerm('accessSettings'); },
+        canEditCategory() { return this.hasPerm('editCat'); },
+        canEditAny() { return this.hasPerm('createEntry'); },
+        canViewCustomersTab() { return this.hasPerm('manageCustomers'); },
+        canViewCategoriesTab() { return this.hasPerm('editCat'); },
+        isStaff() { return !this.canViewList && !this.canAccessSettings; }, 
+
+        activeTransactions() { return this.transactions.filter(t => t[15] === 'Active'); },
+        trashedTransactions() { return this.transactions.filter(t => t[15] === 'Deleted').sort((a,b) => new Date(b[17]) - new Date(a[17])); },
+        uniqueCustomers() { return this.customers.map(c => c[1]).sort(); },
+        myRequests() { return this.allRequests.filter(r => r[1] === this.user.email).sort((a,b) => new Date(b[4]) - new Date(a[4])); },
+
+        // === Loan Computed ===
+        activeLoans() { return this.loans.filter(l => l[9] === 'Active'); },
+        closedLoans() { return this.loans.filter(l => l[9] === 'Closed'); },
+        totalActiveLoanAmount() { return this.activeLoans.reduce((sum, l) => sum + (parseFloat(l[4]) || 0), 0); },
+        loanStats() { return { activeCount: this.activeLoans.length, closedCount: this.closedLoans.length, activeAmount: this.totalActiveLoanAmount }; },
+        dueSoonLoans() {
+          const today = new Date(); today.setHours(0,0,0,0);
+          return this.activeLoans.filter(l => {
+            if(!l[8]) return false;
+            let due = new Date(l[8]); due.setHours(0,0,0,0);
+            let diff = (due.getTime() - today.getTime()) / (1000 * 3600 * 24);
+            return diff <= 7;
+          }).sort((a,b) => new Date(a[8]) - new Date(b[8]));
+        },
+        filteredLoans() {
+          let result = this.loans.filter(l => {
+            const searchTerms = (this.loanFilters.search || '').toLowerCase().trim();
+            const searchableText = [l[1], l[2], l[3]].join(' ').toLowerCase();
+            const matchSearch = searchableText.includes(searchTerms);
+            const matchStatus = !this.loanFilters.status || l[9] === this.loanFilters.status;
+            return matchSearch && matchStatus;
+          });
+          result.sort((a, b) => {
+            let valA = a[this.loanSortKey] || a[1];
+            let valB = b[this.loanSortKey] || b[1];
+            if (this.loanSortKey === 4) { valA = parseFloat(valA)||0; valB = parseFloat(valB)||0; }
+            else if (this.loanSortKey === 7 || this.loanSortKey === 8) { valA = new Date(valA).getTime()||0; valB = new Date(valB).getTime()||0; }
+            else { valA = String(valA).toLowerCase(); valB = String(valB).toLowerCase(); }
+            if (valA < valB) return this.loanSortDesc ? 1 : -1;
+            if (valA > valB) return this.loanSortDesc ? -1 : 1;
+            return 0;
+          });
+          return result;
+        },
+
+        customerUpdatePrompt() {
+           if(!this.form.payerName) return null;
+           let found = this.customers.find(c => c[1] === this.form.payerName.trim());
+           if(!found) return 'new';
+           let taxChanged = (this.form.taxId || '') !== (found[2] || '');
+           let currentAddrStr = JSON.stringify(this.addrHelper);
+           let foundAddrStr = found[3] || '{}';
+           let parsedFound = {line1:'', subDistrict:'', district:'', province:'', zip:''};
+           try { let p = JSON.parse(foundAddrStr); parsedFound = {line1: p.line1||'', subDistrict: p.subDistrict||'', district: p.district||'', province: p.province||'', zip: p.zip||''};
+           } catch(e) { parsedFound.line1 = foundAddrStr; }
+           
+           if(taxChanged || currentAddrStr !== JSON.stringify(parsedFound)) return 'update';
+           return null;
+        },
+        
+        dashboardTransactions() {
+          return this.activeTransactions.filter(t => {
+            if (!t[1]) return false;
+            const tDate = new Date(t[1]); tDate.setHours(0,0,0,0);
+            let startOk = true, endOk = true;
+            if (this.dashStartDate) { const sDate = new Date(this.dashStartDate); sDate.setHours(0,0,0,0); startOk = tDate >= sDate; }
+            if (this.dashEndDate) { const eDate = new Date(this.dashEndDate); eDate.setHours(23,59,59,999); endOk = tDate <= eDate; }
+            return startOk && endOk;
+          });
+        },
+        recentTransactions() { return [...this.dashboardTransactions].sort((a, b) => new Date(b[1]) - new Date(a[1])).slice(0, 5); },
+        topExpenses() { return [...this.dashboardTransactions].filter(t => t[7] === 'รายจ่าย').sort((a, b) => (parseFloat(b[11]) || 0) - (parseFloat(a[11]) || 0)).slice(0, 5); },
+        topIncomes() { return [...this.dashboardTransactions].filter(t => t[7] === 'รายรับ').sort((a, b) => (parseFloat(b[11]) || 0) - (parseFloat(a[11]) || 0)).slice(0, 5); },
+
+        filteredTransactions() {
+          let result = this.activeTransactions.filter(t => {
+            const searchTerms = this.filters.search.toLowerCase().trim().split(/\s+/);
+            const addrText = this.formatAddressObject(t[6]);
+            const searchableText = [t[1], t[2], t[3], t[4], t[5], addrText, t[7], t[8], t[9], t[10], t[11], t[13]].join(' ').toLowerCase();
+            const matchSearch = searchTerms.every(term => searchableText.includes(term));
+            const matchCat = !this.filters.category || t[7] === this.filters.category;
+            let startOk = true, endOk = true;
+            if (t[1]) {
+               const tDate = new Date(t[1]); tDate.setHours(0,0,0,0);
+               if (this.filters.startDate) { const sDate = new Date(this.filters.startDate); sDate.setHours(0,0,0,0); startOk = tDate >= sDate; }
+               if (this.filters.endDate) { const eDate = new Date(this.filters.endDate); eDate.setHours(23,59,59,999); endOk = tDate <= eDate; }
+            }
+            return matchSearch && matchCat && startOk && endOk;
+          });
+          
+          result.sort((a, b) => {
+            let valA = a[this.sortKey] || a[1], valB = b[this.sortKey] || b[1];
+            if (this.sortKey === 11) { valA = parseFloat(valA) || 0; valB = parseFloat(valB) || 0; } 
+            else if (this.sortKey === 1 || this.sortKey === 17) { valA = new Date(valA).getTime() || 0; valB = new Date(valB).getTime() || 0; } 
+            else if (this.sortKey === 'docNo') { valA = (parseFloat(a[2])||0)*1000 + (parseFloat(a[3])||0); valB = (parseFloat(b[2])||0)*1000 + (parseFloat(b[3])||0); } 
+            else { valA = String(valA).toLowerCase(); valB = String(valB).toLowerCase(); }
+            if (valA < valB) return this.sortDesc ? 1 : -1;
+            if (valA > valB) return this.sortDesc ? -1 : 1;
+            return 0;
+          });
+          return result;
+        },
+        summaryData() {
+          let income = 0, expense = 0;
+          this.dashboardTransactions.forEach(t => {
+            const amt = parseFloat(t[11]) || 0;
+            if (t[7] === 'รายรับ') income += amt; else if (t[7] === 'รายจ่าย') expense += amt;
+          });
+          return { income, expense };
+        }
+      },
+      filters: {
+        formatDate(val) { return val ? new Date(val).toLocaleString('th-TH') : '-'; },
+        formatDateOnly(val) { return val ? new Date(val).toLocaleDateString('th-TH') : '-'; },
+        formatDateTime(val) { 
+          if (!val) return '-'; const d = new Date(val);
+          return `${d.toLocaleDateString('th-TH')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')} น.`;
+        },
+        formatNumber(val) { return isNaN(val) || !val ? '0.00' : parseFloat(val).toLocaleString('th-TH', {minimumFractionDigits: 2}); }
+      },
+      watch: {
+        'form.category': function(newVal) { if (!this.form.isManual) this.updateAutoDocNo(); },
+        'form.payerName': function(newVal) {
+          if(!newVal) { this.showAddCustomerPrompt = false; return; }
+          let found = this.customers.find(c => c[1] === newVal.trim());
+          if (found) {
+            this.form.taxId = found[2] || '';
+            let addrData = found[3] || '';
+            try { this.addrHelper = JSON.parse(addrData); } catch(e) { this.addrHelper = { line1: addrData, subDistrict: '', district: '', province: '', zip: '' }; }
+            this.showAddCustomerPrompt = false; this.isAutoFilled = true;
+            setTimeout(() => { this.isAutoFilled = false; }, 3000);
+          } else { this.showAddCustomerPrompt = true; }
+        }
+      },
+      mounted() { this.fetchData(); },
+      methods: {
+        // ======= UTILITY METHODS =======
+        debounce(func, delay = 300) {
+          let timeoutId;
+          return (...args) => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => func.apply(this, args), delay);
+          };
+        },
+        throttle(func, limit = 500) {
+          let inThrottle;
+          return (...args) => {
+            if (!inThrottle) { func.apply(this, args); inThrottle = true; setTimeout(() => inThrottle = false, limit); }
+          };
+        },
+        validateEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); },
+        validateNumber(value) { return !isNaN(value) && value !== ''; },
+        sanitizeInput(input) { return String(input).trim().replace(/[<>\"']/g, ''); },
+        showNotification(message, type = 'success', duration = 3000) {
+          this.successMessage = message; this.successMessageType = type; this.showSuccessModal = true;
+          if (duration > 0) setTimeout(() => { this.showSuccessModal = false; }, duration);
+        },
+
+        getDaysLeft(deletedDateStr) {
+          if(!deletedDateStr) return 0;
+          const dDate = new Date(deletedDateStr).getTime();
+          const now = new Date().getTime();
+          const diff = now - dDate;
+          const daysPassed = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const left = 7 - daysPassed;
+          return left > 0 ? left : 0;
+        },
+        hasPerm(key) {
+          if (this.user.role === 'Admin') return true;
+          return this.rolePerms[this.user.role] ? this.rolePerms[this.user.role][key] : false;
+        },
+        addNewRole() {
+          if(!this.newRoleName.trim()) return;
+          if(this.rolePerms[this.newRoleName.trim()]) { alert('ชื่อตำแหน่งนี้มีอยู่แล้ว'); return; }
+          this.$set(this.rolePerms, this.newRoleName.trim(), { viewDash: true, createEntry: false, viewList: false, editCat: false, manageTrash: false, manageCustomers: false, manageDash: false, accessSettings: false, developer: false });
+          this.newRoleName = '';
+        },
+        deleteRole(role) {
+          if(confirm(`ต้องการลบตำแหน่ง ${role} ใช่หรือไม่? (ผู้ใช้ในตำแหน่งนี้จะกลายเป็นพนักงานทั่วไป)`)) this.$delete(this.rolePerms, role);
+        },
+        saveRoleMatrix() {
+          this.globalLoading = true; this.loadingMessage = "กำลังบันทึกตั้งค่าสิทธิ์...";
+          google.script.run.withSuccessHandler(res => { this.globalLoading = false; this.showSuccessAlert(res.message); }).saveRolePermissions(this.rolePerms);
+        },
+        submitRequest() {
+          if(!this.widgetRequestText.trim()) return;
+          this.globalLoading = true; this.loadingMessage = "กำลังส่งคำขอ...";
+          google.script.run.withSuccessHandler(res => {
+            this.globalLoading = false; this.widgetRequestText = ''; this.showSuccessAlert(res.message); this.reloadDataSilent();
+          }).submitFeatureRequest(this.widgetRequestText, this.clientEmail);
+        },
+        updateReqStatus(id, status) { google.script.run.withSuccessHandler(()=> { this.reloadDataSilent(); }).updateRequestStatus(id, status); },
+        saveDashboardSettings() { google.script.run.saveDashboardLayout(this.globalLayout); this.renderCharts(); },
+        resetColors() {
+          if(!this.globalLayout.theme) this.$set(this.globalLayout, 'theme', {});
+          this.globalLayout.theme.primary = '#5B9BD5'; 
+          this.globalLayout.theme.secondary = '#ED7D31';
+          this.saveDashboardSettings();
+        },
+        toggleDash(key) { this.globalLayout[key] = !this.globalLayout[key]; this.saveDashboardSettings(); },
+        addCategoryRow() {
+          if (!this.newCat.group || !this.newCat.type || !this.newCat.item) { alert('กรุณากรอกข้อมูลให้ครบทุกช่อง'); return; }
+          this.rawConfig.push([this.newCat.category, this.newCat.group, this.newCat.type, this.newCat.item]);
+          this.newCat.group = ''; this.newCat.type = ''; this.newCat.item = '';
+        },
+        removeCategoryRow(index) { this.rawConfig.splice(index, 1); },
+        saveCategories() {
+          this.globalLoading = true; this.loadingMessage = "กำลังอัปเดตโครงสร้างบัญชี...";
+          google.script.run.withSuccessHandler(res => { this.globalLoading = false; this.showSuccessAlert(res.message); this.reloadDataSilent(); }).saveCategoryConfig(this.rawConfig);
+        },
+        onPayerSelect() {
+          if(!this.form.payerName) return;
+          let found = this.customers.find(c => c[1] === this.form.payerName.trim());
+          if (found) {
+            this.form.taxId = found[2] || '';
+            try { this.addrHelper = JSON.parse(found[3] || '{}'); } catch(e) { this.addrHelper = { line1: found[3]||'', subDistrict: '', district: '', province: '', zip: '' }; }
+            this.isAutoFilled = true; setTimeout(() => { this.isAutoFilled = false; }, 3000);
+          }
+        },
+        formatAddressObject(addrStr) {
+          if (!addrStr) return '';
+          try {
+            let obj = JSON.parse(addrStr); let parts = [];
+            if(obj.line1) parts.push(obj.line1); if(obj.subDistrict) parts.push("แขวง/ต." + obj.subDistrict);
+            if(obj.district) parts.push("เขต/อ." + obj.district); if(obj.province) parts.push("จ." + obj.province);
+            if(obj.zip) parts.push(obj.zip); return parts.join(" ") || "-";
+          } catch(e) { return addrStr; }
+        },
+        viewCustomerHistory(customerName) {
+           this.filters.search = customerName; this.filters.category = ''; this.filters.startDate = ''; this.filters.endDate = ''; this.switchTab('list');
+        },
+        openCustomerModal(c = null) {
+          if(c) {
+             let parsedHelper = { line1: '', subDistrict: '', district: '', province: '', zip: '' };
+             try { parsedHelper = JSON.parse(c[3]); } catch(e) { parsedHelper.line1 = c[3]; }
+             this.cusForm = { id: c[0], name: c[1], taxId: c[2], addrHelper: parsedHelper };
+          } else { this.cusForm = { id: '', name: '', taxId: '', addrHelper: { line1: '', subDistrict: '', district: '', province: '', zip: '' } }; }
+          this.showCustomerModal = true;
+        },
+        submitCustomerForm() {
+          // ===== INPUT VALIDATION =====
+          if (!this.cusForm.name || !this.cusForm.name.trim()) {
+            this.showNotification('กรุณากรอกชื่อลูกค้า/องค์กร', 'warning', 3000);
+            return;
+          }
+          if (this.cusForm.taxId && this.cusForm.taxId.length !== 13 && this.cusForm.taxId.length > 0) {
+            this.showNotification('เลขประจำตัวผู้เสียภาษีต้องเป็น 13 หลัก', 'warning', 3000);
+            return;
+          }
+          
+          this.globalLoading = true; 
+          this.loadingMessage = "กำลังบันทึกข้อมูลลูกค้า...";
+          const submitData = { 
+            id: this.cusForm.id, 
+            name: this.sanitizeInput(this.cusForm.name), 
+            taxId: this.cusForm.taxId, 
+            address: JSON.stringify(this.cusForm.addrHelper) 
+          };
+          google.script.run.withSuccessHandler(res => { 
+            this.globalLoading = false; 
+            this.showCustomerModal = false; 
+            this.showNotification('บันทึกข้อมูลลูกค้าเรียบร้อยแล้ว ✓', 'success', 2500); 
+            this.reloadDataSilent(); 
+          }).withFailureHandler(err => {
+            this.globalLoading = false;
+            this.showNotification('เกิดข้อผิดพลาด กรุณาลองใหม่', 'error', 4000);
+          }).saveCustomerData(submitData);
+        },
+        deleteCustomer(id) {
+          if(confirm('ต้องการลบข้อมูลลูกค้ารายนี้ออกจากระบบหรือไม่?')) {
+            this.globalLoading = true; 
+            this.loadingMessage = "กำลังลบข้อมูลลูกค้า...";
+            google.script.run.withSuccessHandler(res => { 
+              this.globalLoading = false; 
+              this.showNotification('ลบลูกค้าเรียบร้อยแล้ว ✓', 'success', 2500); 
+              this.reloadDataSilent(); 
+            }).withFailureHandler(err => {
+              this.globalLoading = false;
+              console.error('Delete customer error:', err);
+              this.showNotification('เกิดข้อผิดพลาด กรุณาลองใหม่', 'error', 4000);
+            }).deleteCustomerData(id);
+          }
+        },
+        quickSaveCustomer(type) {
+          if (!this.form.payerName || !this.form.payerName.trim()) {
+            this.showNotification('กรุณากรอกชื่อลูกค้า/องค์กร', 'warning', 3000);
+            return;
+          }
+          if (this.form.taxId && this.form.taxId.length !== 13 && this.form.taxId.length > 0) {
+            this.showNotification('เลขประจำตัวผู้เสียภาษีต้องเป็น 13 หลัก', 'warning', 3000);
+            return;
+          }
+          
+          let idToSave = '';
+          if (type === 'update') { let found = this.customers.find(c => c[1] === this.form.payerName.trim()); if (found) idToSave = found[0]; }
+          const submitData = { id: idToSave, name: this.sanitizeInput(this.form.payerName.trim()), taxId: this.form.taxId, address: JSON.stringify(this.addrHelper) };
+          this.globalLoading = true; 
+          this.loadingMessage = type === 'update' ? "กำลังอัปเดตข้อมูลลูกค้า..." : "กำลังเพิ่มฐานข้อมูลลูกค้า...";
+          google.script.run.withSuccessHandler(res => { 
+            this.globalLoading = false; 
+            this.showNotification(res.message || 'บันทึกข้อมูลสำเร็จ ✓', 'success', 2500); 
+            this.reloadDataSilent(); 
+          }).withFailureHandler(err => {
+            this.globalLoading = false;
+            console.error('Quick save error:', err);
+            this.showNotification('เกิดข้อผิดพลาด กรุณาลองใหม่', 'error', 4000);
+          }).saveCustomerData(submitData);
+        },
+        switchAccount() {
+          localStorage.removeItem('tij_finance_email');
+          if (this.appUrl) { window.top.location.href = 'https://accounts.google.com/AccountChooser?continue=' + this.appUrl; } else { window.location.reload(); }
+        },
+        submitEmailPrompt() {
+          if (!this.promptEmail) return; this.clientEmail = this.promptEmail.trim(); localStorage.setItem('tij_finance_email', this.clientEmail);
+          this.showEmailPromptModal = false; this.globalLoading = true; this.loadingMessage = 'กำลังตรวจสอบสิทธิ์...'; this.fetchData(); 
+        },
+        formatThaiDateFull(dateStr) {
+          if (!dateStr) return ''; const d = new Date(dateStr); if (isNaN(d.getTime())) return '';
+          const months = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+          return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
+        },
+        formatDocNo(cat, book, receipt) { return `${cat === 'รายรับ' ? 'บร.' : (cat === 'รายจ่าย' ? 'บค.' : 'สว.')}${book}/${receipt}`; },
+        sortByCol(index) { if (this.sortKey === index) this.sortDesc = !this.sortDesc; else { this.sortKey = index; this.sortDesc = true; } },
+
+        // === Loan Methods ===
+        sortLoanByCol(index) {
+          if (this.loanSortKey === index) this.loanSortDesc = !this.loanSortDesc;
+          else { this.loanSortKey = index; this.loanSortDesc = true; }
+        },
+        toggleAllLoans(e) {
+          if(e.target.checked) { this.selectedLoans = this.filteredLoans.filter(l => l[9] === 'Active').map(l => l[0]); }
+          else { this.selectedLoans = []; }
+        },
+        handleFileUpload(e) {
+          const file = e.target.files[0];
+          if (!file) return;
+          if (file.size > 5 * 1024 * 1024) { alert('ไฟล์มีขนาดใหญ่เกินไป (จำกัด 5MB)'); e.target.value = ''; return; }
+          const reader = new FileReader();
+          reader.onload = (event) => { this.loanForm.fileBase64 = event.target.result; this.loanForm.fileName = file.name; };
+          reader.readAsDataURL(file);
+        },
+        resetLoanForm() {
+          this.loanForm = { id: '', contractNo: '', runningNo: '', year: '', isManual: false, category: '', note: '', borrowerName: '', borrowerEmail: '', amount: '', borrowDate: this.todayStr, dueDate: '', status: 'Active', fileBase64: null, fileName: '', attachmentUrl: '' };
+        },
+        submitLoanForm() {
+          this.globalLoading = true; this.loadingMessage = 'กำลังบันทึกและอัปโหลดข้อมูล...';
+          google.script.run.withSuccessHandler(res => {
+            this.globalLoading = false;
+            if(res && res.success) { this.showLoanEditModal = false; this.showSuccessAlert(res.message); this.resetLoanForm(); this.reloadDataSilent(); this.loanSubTab = 'list'; }
+            else { alert(res ? res.message : 'เกิดข้อผิดพลาด'); }
+          }).withFailureHandler(err => { this.globalLoading = false; alert('Error: ' + err); }).saveLoan(this.loanForm, this.clientEmail);
+        },
+        openEditLoanModal(l) {
+          let bd = this.todayStr; let dd = '';
+          if (l[7]) { let bdObj = new Date(l[7]); if (!isNaN(bdObj.getTime())) bd = bdObj.toISOString().split('T')[0]; }
+          if (l[8]) { let ddObj = new Date(l[8]); if (!isNaN(ddObj.getTime())) dd = ddObj.toISOString().split('T')[0]; }
+          this.loanForm = { id: l[0], contractNo: l[1], runningNo: '', year: '', isManual: false, borrowerName: l[2], borrowerEmail: l[3], amount: l[4], category: l[5], note: l[6], borrowDate: bd, dueDate: dd, status: l[9], attachmentUrl: l[10] };
+          this.showLoanEditModal = true;
+        },
+        deleteLoanItem(id) {
+          if(confirm('ยืนยันการลบเอกสารนี้? (ลบถาวร)')) {
+            this.globalLoading = true; this.loadingMessage = 'กำลังลบข้อมูล...';
+            google.script.run.withSuccessHandler(res => { this.globalLoading = false; this.showSuccessAlert(res ? res.message : 'ลบข้อมูลสำเร็จ'); this.reloadDataSilent(); }).deleteLoan(id);
+          }
+        },
+        sendMultiReminders() {
+          if(this.selectedLoans.length === 0) return;
+          if(confirm(`ยืนยันส่งอีเมลแจ้งเตือนถึง ${this.selectedLoans.length} รายการที่เลือก ใช่หรือไม่?`)) {
+            this.globalLoading = true; this.loadingMessage = 'กำลังส่งอีเมลแจ้งเตือน...';
+            google.script.run.withSuccessHandler(res => { this.globalLoading = false; this.selectedLoans = []; this.showSuccessAlert(res ? res.message : 'ส่งแจ้งเตือนสำเร็จ'); }).sendManualReminders(this.selectedLoans);
+          }
+        },
+        isOverdue(dateStr) {
+          if(!dateStr) return false;
+          return new Date().getTime() > new Date(dateStr).getTime();
+        },
+        addAdvanceType() { if(this.newAdvanceType.trim()) { this.loanConfig.loanCategories.push(this.newAdvanceType.trim()); this.newAdvanceType = ''; } },
+        removeLoanCategory(index) { this.loanConfig.loanCategories.splice(index, 1); },
+        addReminderDay() { 
+          if(this.newReminderDay !== '' && !this.loanConfig.reminderDays.includes(parseInt(this.newReminderDay))) { 
+            this.loanConfig.reminderDays.push(parseInt(this.newReminderDay)); 
+            this.loanConfig.reminderDays.sort((a,b) => b-a); 
+            this.newReminderDay = ''; 
+          } 
+        },
+        saveLoanConfig() {
+          this.globalLoading = true; this.loadingMessage = 'กำลังบันทึกตั้งค่า...';
+          google.script.run.withSuccessHandler(res => { this.globalLoading = false; this.showSuccessAlert(res ? res.message : 'สำเร็จ'); this.reloadDataSilent(); }).saveLoanConfig(this.loanConfig);
+        },
+        updateAutoLoanDocNo() {
+          if (this.nextLoanDoc) {
+            let parts = this.nextLoanDoc.split('/');
+            if (!this.loanForm.isManual) { this.loanForm.runningNo = parseInt(parts[0]); this.loanForm.year = parts[1]; }
+          }
+        },
+        
+        switchTab(tab) { 
+          if(tab === 'admin' && !this.hasPerm('accessSettings')) { alert("คุณไม่มีสิทธิ์เข้าถึงเมนูนี้"); return; }
+          if(tab === 'list' && !this.hasPerm('viewList')) { alert("คุณไม่มีสิทธิ์เข้าถึงตารางรายการ"); return; }
+          if(tab === 'entry' && !this.hasPerm('createEntry')) { alert("คุณไม่มีสิทธิ์สร้างรายการ"); return; }
+          if(tab === 'loan' && !this.hasPerm('viewLoan')) { alert("คุณไม่มีสิทธิ์เข้าถึงระบบเงินกู้ยืม"); return; }
+          if(tab === 'admin') {
+             if(this.hasPerm('manageDash')) this.adminSubTab = 'dashboard';
+             else if(this.hasPerm('manageCustomers')) this.adminSubTab = 'customers';
+             else if(this.hasPerm('editCat')) this.adminSubTab = 'categories';
+             else this.adminSubTab = 'request';
+          }
+          this.currentTab = tab; if(tab === 'dashboard') this.$nextTick(() => this.renderCharts());
+        },
+        updateAutoDocNo() {
+          if (!this.nextDocObj) return;
+          if (this.form.category === 'รายรับ') { this.form.bookNo = this.nextDocObj.income.bookNo; this.form.receiptNo = this.nextDocObj.income.receiptNo; } 
+          else if (this.form.category === 'รายจ่าย') { this.form.bookNo = this.nextDocObj.expense.bookNo; this.form.receiptNo = this.nextDocObj.expense.receiptNo; }
+        },
+        fetchData() {
+          google.script.run.withSuccessHandler(res => {
+            try {
+              if (!res || !res.user) { throw new Error('Invalid response from server'); }
+              if (res.user.email === 'REQUIRE_EMAIL') { this.globalLoading = false; this.showEmailPromptModal = true; return; }
+              
+              this.user = res.user; 
+              if(res.user.role === 'Admin') this.loadUsers();
+              this.appUrl = res.appUrl; 
+              this.ssUrl = res.ssUrl; 
+              this.config = res.config || {}; 
+              this.rawConfig = res.rawConfig || []; 
+              this.transactions = res.transactions || []; 
+              this.customers = res.customers || []; 
+              this.allRequests = res.requests || []; 
+              this.nextDocObj = res.nextDoc;
+              
+              if(res.globalLayout) { 
+                this.globalLayout = res.globalLayout; 
+                if(!this.globalLayout.theme) { this.$set(this.globalLayout, 'theme', { primary: '#5B9BD5', secondary: '#ED7D31' }); } 
+              }
+              if(res.rolePerms) { this.rolePerms = res.rolePerms; }
+              
+              this.loans = res.loans || [];
+              this.nextLoanDoc = res.nextLoanDoc || null;
+              if(res.loanConfig) { this.loanConfig = res.loanConfig; }
+              
+              this.updateAutoDocNo();
+              if(!this.loanForm.isManual) { this.updateAutoLoanDocNo(); }
+              this.globalLoading = false;
+              if(!this.hasPerm('viewList') && !this.hasPerm('accessSettings')) { this.currentTab = 'dashboard'; }
+              this.$nextTick(() => this.renderCharts());
+            } catch(error) {
+              console.error('Error in fetchData:', error);
+              this.globalLoading = false;
+              this.showNotification('เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณารีโหลดหน้าเว็บ', 'error', 5000);
+            }
+          }).withFailureHandler(err => {
+            console.error('Backend error:', err);
+            this.globalLoading = false;
+            this.showNotification('ไม่สามารถเชื่อมต่อกับระบบ กรุณาลองใหม่', 'error', 5000);
+          }).getAppData(this.clientEmail);
+        },
+        reloadDataSilent() {
+          google.script.run.withSuccessHandler(res => {
+            try {
+              this.config = res.config || {}; 
+              this.rawConfig = res.rawConfig || []; 
+              this.transactions = res.transactions || []; 
+              this.customers = res.customers || []; 
+              this.allRequests = res.requests || []; 
+              this.nextDocObj = res.nextDoc;
+              this.loans = res.loans || [];
+              this.nextLoanDoc = res.nextLoanDoc || null;
+              if(res.loanConfig) { this.loanConfig = res.loanConfig; }
+              if(res.globalLayout) { 
+                this.globalLayout = res.globalLayout; 
+                if(!this.globalLayout.theme) { this.$set(this.globalLayout, 'theme', { primary: '#5B9BD5', secondary: '#ED7D31' }); } 
+              }
+              if(res.rolePerms) { this.rolePerms = res.rolePerms; }
+              if(!this.form.isManual) { this.updateAutoDocNo(); }
+              if(!this.loanForm.isManual) { this.updateAutoLoanDocNo(); }
+              this.$nextTick(() => { if(this.currentTab === 'dashboard') this.renderCharts(); });
+            } catch(error) {
+              console.error('Error in reloadDataSilent:', error);
+            }
+          }).withFailureHandler(err => {
+            console.warn('Reload failed silently:', err);
+          }).getAppData(this.clientEmail);
+        },
+        showSuccessAlert(msg) { this.successMessage = msg; this.showSuccessModal = true; },
+        resetForm() {
+          const b = this.form.bookNo, r = this.form.receiptNo;
+          this.form = { id: '', transactionDate: todayStr, bookNo: b, receiptNo: r, isManual: false, payerName: '', taxId: '', address: '', category: 'รายรับ', group: '-', type: '-', item: '-', amount: '', paymentMethod: 'โอนผ่านธนาคาร', description: '' };
+          this.addrHelper = { line1: '', subDistrict: '', district: '', province: '', zip: '' };
+        },
+        resetHierarchy(level) {
+          if(level <= 1) { this.editForm.group = '-'; this.editForm.type = '-'; this.editForm.item = '-'; }
+          if(level <= 2) { this.editForm.type = '-'; this.editForm.item = '-'; }
+          if(level <= 3) { this.editForm.item = '-'; }
+        },
+        submitBasicForm() {
+          // ===== INPUT VALIDATION =====
+          if (!this.form.payerName || !this.form.payerName.trim()) {
+            this.showNotification('กรุณากรอกชื่อผู้ชำระเงิน', 'warning', 3000);
+            return;
+          }
+          if (!this.validateNumber(this.form.amount) || parseFloat(this.form.amount) <= 0) {
+            this.showNotification('กรุณากรอกจำนวนเงินที่ถูกต้อง', 'warning', 3000);
+            return;
+          }
+          if (this.form.taxId && this.form.taxId.length !== 13 && this.form.taxId.length > 0) {
+            this.showNotification('เลขประจำตัวผู้เสียภาษีต้องเป็น 13 หลัก', 'warning', 3000);
+            return;
+          }
+          
+          this.globalLoading = true; 
+          this.loadingMessage = 'กำลังบันทึกข้อมูลเข้าระบบ...';
+          this.form.address = JSON.stringify(this.addrHelper); 
+          this.form.payerName = this.sanitizeInput(this.form.payerName);
+          
+          google.script.run.withSuccessHandler(res => { 
+            this.globalLoading = false; 
+            this.showNotification('บันทึกข้อมูลเรียบร้อยแล้ว ✓', 'success', 2500);
+            this.resetForm(); 
+            this.reloadDataSilent(); 
+            this.switchTab('list');
+          }).withFailureHandler(err => {
+            this.globalLoading = false;
+            console.error('Submit error:', err);
+            this.showNotification('เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่', 'error', 4000);
+          }).saveTransaction(this.form, this.clientEmail);
+        },
+        openViewModal(item) { this.viewItem = item; this.showViewModal = true; },
+        
+        // แก้ไขปุ่ม Edit ให้ดึง JSON อย่างปลอดภัย
+        openEditModal(item) {
+          let d = todayStr;
+          if (item[1]) {
+            let dateObj = new Date(item[1]);
+            if (!isNaN(dateObj.getTime())) { d = dateObj.toISOString().split('T')[0]; }
+          }
+          let currentAddr = item[6] || '';
+          let parsedHelper = { line1: currentAddr, subDistrict: '', district: '', province: '', zip: '' };
+          try { 
+            let p = JSON.parse(currentAddr); 
+            if(p && typeof p === 'object' && p.line1 !== undefined) {
+               parsedHelper = { line1: p.line1||'', subDistrict: p.subDistrict||'', district: p.district||'', province: p.province||'', zip: p.zip||'' };
+            }
+          } catch(e) {}
+          
+          this.addrHelper = parsedHelper;
+          this.editForm = { id: item[0], transactionDate: d, bookNo: item[2], receiptNo: item[3], isManual: true, payerName: item[4], taxId: item[5], address: '', category: item[7], group: item[8], type: item[9], item: item[10], amount: item[11], paymentMethod: item[12], description: item[13] || '' };
+          this.showEditModal = true;
+        },
+        submitEditForm() {
+          // ===== INPUT VALIDATION =====
+          if (!this.editForm.payerName || !this.editForm.payerName.trim()) {
+            this.showNotification('กรุณากรอกชื่อผู้ชำระเงิน', 'warning', 3000);
+            return;
+          }
+          if (!this.validateNumber(this.editForm.amount) || parseFloat(this.editForm.amount) <= 0) {
+            this.showNotification('กรุณากรอกจำนวนเงินที่ถูกต้อง', 'warning', 3000);
+            return;
+          }
+          
+          this.globalLoading = true; 
+          this.loadingMessage = 'กำลังอัปเดตข้อมูล...';
+          this.editForm.address = JSON.stringify(this.addrHelper);
+          this.editForm.payerName = this.sanitizeInput(this.editForm.payerName);
+          
+          google.script.run.withSuccessHandler(res => { 
+            this.showEditModal = false; 
+            this.globalLoading = false;
+            this.showNotification('อัปเดตข้อมูลเรียบร้อยแล้ว ✓', 'success', 2500); 
+            this.reloadDataSilent();
+          }).withFailureHandler(err => {
+            this.globalLoading = false;
+            console.error('Update error:', err);
+            this.showNotification('เกิดข้อผิดพลาดในการอัปเดต กรุณาลองใหม่', 'error', 4000);
+          }).saveTransaction(this.editForm, this.clientEmail);
+        },
+
+        // Optimistic UI updates for immediate user feedback on trash/delete operations
+        deleteItem(id) {
+          if(confirm("ยืนยันการลบรายการนี้ลงถังขยะ?")) {
+            this.globalLoading = true; 
+            this.loadingMessage = 'กำลังย้ายลงถังขยะ...';
+            
+            // อัปเดตฝั่งหน้าบ้านแบบ Optimistic ให้ข้อมูลหายไปทันทีโดยไม่ต้องรอโหลดกลับ
+            let tIndex = this.transactions.findIndex(t => t[0] === id);
+            if(tIndex > -1) { 
+               this.$set(this.transactions[tIndex], 15, 'Deleted'); 
+               this.$set(this.transactions[tIndex], 17, new Date().toISOString()); 
+            }
+            
+            google.script.run.withSuccessHandler(res => { 
+               this.globalLoading = false; 
+               this.showNotification('ย้ายลงถังขยะเรียบร้อยแล้ว ✓', 'success', 2500); 
+               this.reloadDataSilent();
+            }).withFailureHandler(err => { 
+               console.error('Delete error:', err);
+               this.globalLoading = false; 
+               this.showNotification('เกิดข้อผิดพลาดในการลบ กรุณาลองใหม่', 'error', 4000);
+            }).deleteTransaction(id, this.clientEmail);
+          }
+        },
+        restoreItem(id) {
+          if(confirm("ต้องการกู้คืนรายการนี้กลับไปใช้งานหรือไม่?")) {
+            this.globalLoading = true; 
+            this.loadingMessage = 'กำลังกู้คืนข้อมูล...';
+            
+            let tIndex = this.transactions.findIndex(t => t[0] === id);
+            if(tIndex > -1) { this.$set(this.transactions[tIndex], 15, 'Active'); }
+
+            google.script.run.withSuccessHandler(res => { 
+               this.globalLoading = false; 
+               this.showNotification('กู้คืนรายการสำเร็จ ✓', 'success', 2500); 
+               this.reloadDataSilent();
+            }).withFailureHandler(err => {
+               console.error('Restore error:', err);
+               this.globalLoading = false;
+               this.showNotification('เกิดข้อผิดพลาดในการกู้คืน กรุณาลองใหม่', 'error', 4000);
+            }).restoreTransaction(id, this.clientEmail);
+          }
+        },
+        hardDeleteItem(id) {
+          if(confirm("⚠️ คำเตือน: คุณยืนยันที่จะ 'ลบถาวร' ใช่หรือไม่?\n(ข้อมูลนี้จะถูกลบทิ้งจากฐานข้อมูลทันที และไม่สามารถกู้คืนได้อีก)")) {
+            this.globalLoading = true; 
+            this.loadingMessage = 'กำลังลบข้อมูลถาวร...';
+            
+            let tIndex = this.transactions.findIndex(t => t[0] === id);
+            if(tIndex > -1) { this.transactions.splice(tIndex, 1); }
+
+            google.script.run.withSuccessHandler(res => { 
+               this.globalLoading = false; 
+               this.showNotification('ลบรายการถาวรเรียบร้อยแล้ว ✓', 'success', 2500); 
+               this.reloadDataSilent();
+            }).withFailureHandler(err => { 
+               console.error('Hard delete error:', err);
+               this.globalLoading = false;
+               this.showNotification('เกิดข้อผิดพลาดในการลบ กรุณาลองใหม่', 'error', 4000);
+            }).deleteTransactionPermanently(id, this.clientEmail);
+          }
+        },
+        
+        openPrintModal(item) { this.printItem = item; this.showPrintModal = true; },
+        generatePDF(templateName) {
+          this.showPrintModal = false; 
+          this.globalLoading = true; 
+          this.loadingMessage = 'กำลังสร้างเอกสาร PDF...';
+          google.script.run.withSuccessHandler(res => {
+            this.globalLoading = false;
+            if(res.success) { 
+              this.pdfResult = res; 
+              this.showNotification('สร้างเอกสาร PDF สำเร็จ ✓', 'success', 2000);
+            } else { 
+              console.error('PDF generation error:', res.message);
+              this.showNotification('เกิดข้อผิดพลาด: ' + res.message, 'error', 4000); 
+            }
+          }).withFailureHandler(err => { 
+            this.globalLoading = false; 
+            console.error('PDF generation failed:', err);
+            this.showNotification('เกิดข้อผิดพลาดจากการเชื่อมต่อ กรุณาลองใหม่', 'error', 4000);
+          }).generatePDF(this.printItem[0], templateName);
+        },
+        openAndDeletePDF() {
+          if (!this.pdfResult) return;
+          window.open(this.pdfResult.url, '_blank');
+          const fileId = this.pdfResult.fileId;
+          setTimeout(() => { google.script.run.deleteTempFile(fileId); }, 3000);
+          this.pdfResult = null;
+        },
+        exportData() {
+          if (this.filteredTransactions.length === 0) { 
+            this.showNotification('ไม่มีข้อมูลให้สรุปในช่วงเวลานี้', 'warning', 3000); 
+            return; 
+          }
+          this.globalLoading = true; 
+          this.loadingMessage = 'กำลังสร้างไฟล์ Excel (CSV) เพื่อดาวน์โหลด...';
+
+          try {
+            setTimeout(() => {
+              try {
+                let broughtForward = 0;
+                if (this.filters.startDate) {
+                  const sDate = new Date(this.filters.startDate); 
+                  sDate.setHours(0,0,0,0);
+                  this.activeTransactions.forEach(t => {
+                     if (!t[1]) return;
+                     const tDate = new Date(t[1]); 
+                     tDate.setHours(0,0,0,0);
+                     if (tDate < sDate) {
+                        const amt = parseFloat(t[11]) || 0; 
+                        broughtForward += (t[7] === 'รายจ่าย' ? -amt : amt);
+                     }
+                  });
+                }
+
+                let csvContent = "\uFEFF"; 
+                csvContent += "date,document,company,category,group,type,item,note,amount,balance\n";
+                let currentBalance = broughtForward;
+
+                if (this.filters.startDate || broughtForward !== 0) {
+                   csvContent += `${this.filters.startDate ? this.formatThaiDateFull(this.filters.startDate) : ''},-,-,-,-,-,-,ยอดยกมา (Brought Forward),0,${currentBalance}\n`;
+                }
+
+                let sortedData = [...this.filteredTransactions].sort((a,b) => new Date(a[1]) - new Date(b[1]));
+                sortedData.forEach(t => {
+                  let prefix = t[7] === 'รายรับ' ? 'บร.' : (t[7] === 'รายจ่าย' ? 'บค.' : 'สว.');
+                  let docNo = `${prefix}${t[2]}/${t[3]}`;
+                  let amt = parseFloat(t[11]) || 0;
+                  let displayAmt = t[7] === 'รายจ่าย' ? -amt : amt;
+                  currentBalance += displayAmt;
+                  let escapeCSV = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
+                  
+                  let row = [
+                    this.formatThaiDateFull(t[1]), docNo, escapeCSV(t[4]),
+                    escapeCSV(t[7]), escapeCSV(t[8]), escapeCSV(t[9]), escapeCSV(t[10] || t[13]),
+                    escapeCSV(t[13]), displayAmt, currentBalance
+                  ];
+                  csvContent += row.join(",") + "\n";
+                });
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                link.setAttribute("href", URL.createObjectURL(blob));
+                link.setAttribute("download", `สรุปบัญชี_${new Date().getTime()}.csv`);
+                document.body.appendChild(link); 
+                link.click(); 
+                document.body.removeChild(link);
+
+                this.globalLoading = false; 
+                this.showNotification('ดาวน์โหลดไฟล์ Excel เรียบร้อยแล้ว ✓', 'success', 2500);
+              } catch(err) {
+                console.error('Export error:', err);
+                this.globalLoading = false;
+                this.showNotification('เกิดข้อผิดพลาดในการสร้างไฟล์ กรุณาลองใหม่', 'error', 4000);
+              }
+            }, 500);
+          } catch(err) {
+            console.error('Export error:', err);
+            this.globalLoading = false;
+            this.showNotification('เกิดข้อผิดพลาด กรุณาลองใหม่', 'error', 4000);
+          }
+        },
+        loadUsers() { 
+          google.script.run.withSuccessHandler(res => { 
+            this.users = res; 
+          }).withFailureHandler(err => {
+            console.error('Load users error:', err);
+            this.showNotification('เกิดข้อผิดพลาดในการโหลดผู้ใช้', 'error', 3000);
+          }).getAllUsers(); 
+        },
+        changeRole(email, newRole) { 
+          google.script.run.withSuccessHandler(() => { 
+            this.showNotification('อัปเดตสิทธิ์เรียบร้อย ✓', 'success', 2500); 
+            this.loadUsers(); 
+          }).withFailureHandler(err => {
+            console.error('Change role error:', err);
+            this.showNotification('เกิดข้อผิดพลาดในการอัปเดตสิทธิ์', 'error', 4000);
+          }).updateUserRole(email, newRole); 
+        },
+        removeUser(email) {
+          if(confirm(`ต้องการลบสิทธิ์ของบัญชี ${email} ใช่หรือไม่?`)) {
+            this.globalLoading = true; 
+            this.loadingMessage = "กำลังลบผู้ใช้...";
+            google.script.run.withSuccessHandler(() => { 
+              this.globalLoading = false; 
+              this.showNotification('ลบผู้ใช้เรียบร้อยแล้ว ✓', 'success', 2500); 
+              this.loadUsers(); 
+            }).withFailureHandler(err => {
+              this.globalLoading = false;
+              console.error('Remove user error:', err);
+              this.showNotification('เกิดข้อผิดพลาดในการลบ กรุณาลองใหม่', 'error', 4000);
+            }).deleteUserRole(email);
+          }
+        },
+        renderCharts() {
+          if (this.currentTab !== 'dashboard') return;
+          
+          try {
+            const trendEl = document.getElementById('trendChart'); 
+            const pieEl = document.getElementById('pieChart');
+            
+            // Validate DOM elements exist
+            if (!trendEl || !pieEl) {
+              console.warn('Chart elements not found. renderCharts called but elements missing.');
+              return;
+            }
+            
+            // Get canvas contexts safely
+            const ctxTrend = trendEl?.getContext?.('2d');
+            const ctxPie = pieEl?.getContext?.('2d');
+            if (!ctxTrend || !ctxPie) {
+              console.error('Cannot create canvas contexts');
+              return;
+            }
+            
+            // Destroy previous charts if they exist
+            if (window.chartTrend && typeof window.chartTrend.destroy === 'function') {
+              try { window.chartTrend.destroy(); } catch(e) { console.warn('Error destroying trend chart:', e); }
+            }
+            if (window.chartPie && typeof window.chartPie.destroy === 'function') {
+              try { window.chartPie.destroy(); } catch(e) { console.warn('Error destroying pie chart:', e); }
+            }
+
+            // ===== TREND CHART DATA =====
+            const trendData = {};
+            const sortedActive = [...(this.dashboardTransactions || [])].sort((a,b) => {
+              try { return new Date(a[1]) - new Date(b[1]); } catch(e) { return 0; }
+            });
+            
+            sortedActive.forEach(t => {
+              try {
+                if (!t || !t[1] || !t[7] || !t[11]) return; // Skip invalid records
+                const dateStr = new Date(t[1]).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' });
+                if (!trendData[dateStr]) trendData[dateStr] = { in: 0, out: 0 };
+                const amt = parseFloat(t[11]) || 0;
+                if (t[7] === 'รายรับ') trendData[dateStr].in += amt; 
+                if (t[7] === 'รายจ่าย') trendData[dateStr].out += amt;
+              } catch(e) {
+                console.warn('Error processing transaction in chart:', e, t);
+              }
+            });
+
+            const labels = Object.keys(trendData) || []; 
+            const dataIn = labels.map(l => trendData[l].in) || []; 
+            const dataOut = labels.map(l => trendData[l].out) || [];
+            
+            let incColor = (this.globalLayout?.theme?.primary) || '#5B9BD5';
+            let expColor = (this.globalLayout?.theme?.secondary) || '#ED7D31';
+            
+            // Helper function for hex to rgba conversion
+            const hexToRgba = (hex, alpha) => {
+              const r = parseInt(hex.slice(1, 3), 16);
+              const g = parseInt(hex.slice(3, 5), 16);
+              const b = parseInt(hex.slice(5, 7), 16);
+              return `rgba(${r},${g},${b},${alpha})`;
+            };
+            
+            let gradIn = ctxTrend.createLinearGradient(0, 0, 0, 400); 
+            gradIn.addColorStop(0, hexToRgba(incColor, 0.5)); 
+            gradIn.addColorStop(1, hexToRgba(incColor, 0.0));
+            
+            let gradOut = ctxTrend.createLinearGradient(0, 0, 0, 400); 
+            gradOut.addColorStop(0, hexToRgba(expColor, 0.5)); 
+            gradOut.addColorStop(1, hexToRgba(expColor, 0.0));
+
+            // Create trend chart
+            window.chartTrend = new Chart(ctxTrend, {
+              type: 'line', 
+              data: { 
+                labels: labels.length > 0 ? labels : ['ไม่มีข้อมูล'], 
+                datasets: [ 
+                  { label: 'รายรับ', data: dataIn, borderColor: incColor, backgroundColor: gradIn, borderWidth: 3, tension: 0.4, fill: true, pointBackgroundColor: incColor }, 
+                  { label: 'รายจ่าย', data: dataOut, borderColor: expColor, backgroundColor: gradOut, borderWidth: 3, tension: 0.4, fill: true, pointBackgroundColor: expColor } 
+                ] 
+              },
+              options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { legend: { position: 'top' } }, 
+                scales: { y: { beginAtZero: true } } 
+              }
+            });
+
+            // ===== PIE CHART DATA =====
+            let sourceData = {};
+            (this.dashboardTransactions || []).forEach(t => {
+              try {
+                if(t[7] === this.dashBreakdownType) { 
+                  let groupName = (t[8] && t[8] !== '-') ? t[8] : ((t[10] && t[10] !== '-') ? t[10] : 'อื่นๆ');
+                  if(!sourceData[groupName]) sourceData[groupName] = 0; 
+                  sourceData[groupName] += (parseFloat(t[11]) || 0);
+                }
+              } catch(e) {
+                console.warn('Error processing pie chart data:', e, t);
+              }
+            });
+
+            const pieLabels = Object.keys(sourceData) || []; 
+            const pieData = pieLabels.map(l => sourceData[l]) || [];
+            const pieColors = [incColor, expColor, '#FFC000', '#4472C4', '#70AD47', '#A5A5A5', '#264478', '#9E480E', '#997300'];
+
+            // Create pie chart
+            window.chartPie = new Chart(ctxPie, {
+              type: 'doughnut', 
+              data: { 
+                labels: pieLabels.length > 0 ? pieLabels : ['ไม่มีข้อมูล'], 
+                datasets: [{ 
+                  data: pieData.length > 0 ? pieData : [1], 
+                  backgroundColor: pieData.length > 0 ? pieColors : ['#E2E8F0'], 
+                  borderWidth: 0, 
+                  hoverOffset: 4 
+                }] 
+              },
+              options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                cutout: '65%', 
+                plugins: { 
+                  legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }, 
+                  tooltip: { 
+                    callbacks: { 
+                      label: function(context) { 
+                        return ' ฿ ' + (context.parsed || 0).toLocaleString('th-TH', {minimumFractionDigits: 2}); 
+                      } 
+                    } 
+                  } 
+                } 
+              }
+            });
+          } catch(err) {
+            console.error('Error rendering charts:', err);
+            this.showNotification('เกิดข้อผิดพลาดในการแสดงแผนภูมิ', 'error', 3000);
+          }
+        }
+      }
+    });
+  </script>
+  <!-- Include Common JS (utilities, loader, date functions, etc.) -->
+  <?!= include('Common_JS.html'); ?>
+</body>
+</html>
