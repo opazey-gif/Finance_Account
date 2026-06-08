@@ -1,0 +1,195 @@
+<!-- ================================================================
+     Common_JS.html  ·  Master JavaScript (v3 – Role and Access Secure)
+     ทุกหน้าในระบบ include ไฟล์นี้เพียงไฟล์เดียว
+     ================================================================ -->
+
+<!-- ===== EXTERNAL LIBRARIES ===== -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+
+<script>
+window.APP_CONFIG = {
+  timeout: 30000,
+  theme: {
+    primary  : '#f97316',
+    secondary: '#0ea5e9',
+    success  : '#10b981',
+    warning  : '#f59e0b',
+    danger   : '#ef4444',
+    dark     : '#1e293b'
+  }
+};
+
+window.currentUser = null;
+
+/* ================================================================
+   2.  USER AUTH & INITIALIZATION
+   ================================================================ */
+function initUser() {
+  if (typeof google !== 'undefined' && google.script) {
+    google.script.run
+      .withSuccessHandler(function(profile) {
+        window.currentUser = profile;
+        console.log('%c[initUser] role =', 'color:#f97316;font-weight:bold;', profile.role, profile);
+
+        var nameDisplay = document.getElementById('user-display-name');
+        if (nameDisplay && profile.name) {
+          nameDisplay.textContent = profile.name + ' (' + profile.role + ')';
+        }
+        applyRoleBasedUI(profile.role);
+      })
+      .withFailureHandler(function(error) {
+        console.error('[initUser] ERROR:', error);
+        window.currentUser = { role: 'unauthorized', name: 'Guest', department: '' };
+        applyRoleBasedUI('unauthorized');
+      })
+      .getUserProfile();
+  } else {
+    console.warn('[initUser] ไม่พบ google.script');
+  }
+}
+
+function applyRoleBasedUI(role) {
+  var r = (role || 'unauthorized').toLowerCase().trim();
+
+  // ลบ class เดิมออกก่อน
+  document.body.classList.remove('role-admin', 'role-driver', 'role-user', 'role-unauthorized');
+
+  // เพิ่ม class ตาม role — CSS ใน Common_CSS.html จัดการ show/hide ให้
+  if (r === 'admin') {
+    document.body.classList.add('role-admin');
+    console.log('[applyRoleBasedUI] ✅ body.role-admin');
+  } else if (r === 'driver') {
+    document.body.classList.add('role-driver');
+  } else if (r === 'assistant' || r === 'user') {
+    document.body.classList.add('role-user');
+  } else {
+    showUnauthorizedOverlay();
+  }
+}
+
+// 🔒 ฟังก์ชันแสดงหน้าจอบล็อกสิทธิ์เข้าใช้งานกรณีไม่ได้รับอนุญาต
+function showUnauthorizedOverlay() {
+  var email = (window.currentUser && window.currentUser.email) ? window.currentUser.email : 'ไม่พบข้อมูลบัญชี';
+  
+  // สร้าง Overlay สีเข้มทับหน้าจอทั้งหมด ป้องกันการคลิกหรือหลบเลี่ยงใช้งาน
+  var overlay = document.createElement('div');
+  overlay.id = 'security-lock-overlay';
+  overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:#0f172a; color:#ffffff; z-index:99999; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; text-align:center; font-family:"Prompt",sans-serif;';
+  
+  overlay.innerHTML = `
+    <div style="background:#1e293b; padding:40px; border-radius:24px; max-width:480px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5); border:1px solid #334155;">
+      <div style="font-size:72px; margin-bottom:15px;">🔒</div>
+      <h2 style="font-size:24px; font-weight:700; color:#ef4444; margin-bottom:10px;">ไม่มีสิทธิ์เข้าใช้งานระบบ</h2>
+      <p style="color:#94a3b8; font-size:14px; margin-bottom:20px; line-height:1.6;">
+        อีเมลปัจจุบันของคุณไม่ได้ลงทะเบียนในระบบ หรือยังไม่ได้รับสิทธิ์ให้เข้าถึงฐานข้อมูลนี้
+      </p>
+      <div style="background:#0f172a; padding:12px 18px; border-radius:12px; margin-bottom:25px; border:1px dashed #475569;">
+        <span style="font-size:12px; color:#64748b; display:block; text-transform:uppercase; font-weight:600; margin-bottom:4px;">อีเมลผู้ใช้ของคุณ</span>
+        <strong style="color:#f97316; font-size:15px; word-break:break-all;">${email}</strong>
+      </div>
+      <p style="color:#64748b; font-size:12px;">กรุณาติดต่อ แอดมินผู้ดูแลระบบ หรือฝ่ายสารสนเทศ เพื่อเพิ่มสิทธิ์ในตารางรายชื่อพนักงาน</p>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+/* ================================================================
+   3.  UI LOADERS
+   ================================================================ */
+function showLoader() {
+  var l = document.getElementById('masterLoader');
+  if (l) l.style.display = 'flex';
+}
+function hideLoader() {
+  var l = document.getElementById('masterLoader');
+  if (l) l.style.display = 'none';
+}
+
+/* ================================================================
+   4.  ROUTING / NAVIGATION
+   ================================================================ */
+function navigateTo(page) {
+  showLoader();
+  if (typeof google !== 'undefined' && google.script) {
+    google.script.run
+      .withSuccessHandler(function(html) {
+        document.open();
+        document.write(html);
+        document.close();
+      })
+      .withFailureHandler(function(err) {
+        hideLoader();
+        Swal.fire('เกิดข้อผิดพลาดในการนำทาง', err.toString(), 'error');
+      })
+      .loadPage(page);
+  }
+}
+
+/* ================================================================
+   5.  FORM HANDLING & SERIALIZATION
+   ================================================================ */
+function getFormData(formId) {
+  var form = document.getElementById(formId);
+  if (!form) return {};
+  var data = {};
+  var fd = new FormData(form);
+  fd.forEach(function(value, key){
+    if (data[key]) {
+      if (!Array.isArray(data[key])) data[key] = [data[key]];
+      data[key].push(value);
+    } else {
+      data[key] = value;
+    }
+  });
+  return data;
+}
+function resetForm(formId) {
+  var form = document.getElementById(formId);
+  if (form) form.reset();
+}
+
+/* ================================================================
+   6.  NOTIFICATION SYSTEMS (SWAL2)
+   ================================================================ */
+var Toast = Swal.mixin({
+  toast            : true,
+  position         : 'top-end',
+  showConfirmButton: false,
+  timer            : 3000,
+  timerProgressBar : true,
+  didOpen: function(toast) {
+    toast.addEventListener('mouseenter', Swal.stopTimer);
+    toast.addEventListener('mouseleave', Swal.resumeTimer);
+  }
+});
+
+function showToast(icon, title) {
+  Toast.fire({ icon: icon, title: title });
+}
+function alertSuccess(title, text) {
+  return Swal.fire({ icon: 'success', title: title, text: text, confirmButtonColor: window.APP_CONFIG.theme.primary });
+}
+function alertError(title, text) {
+  return Swal.fire({ icon: 'error', title: title, text: text, confirmButtonColor: window.APP_CONFIG.theme.danger });
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  hideLoader();
+  if (typeof google !== 'undefined' && google.script) {
+    initUser();
+  }
+  document.querySelectorAll('[data-type="date"]').forEach(function(el){
+    flatpickr(el, { dateFormat:'d/m/Y', locale:'th' });
+  });
+  if (typeof Chart !== 'undefined') {
+    Chart.defaults.font.family = "'Prompt', 'Kanit', sans-serif";
+    Chart.defaults.color       = '#64748b';
+  }
+});
+</script>
