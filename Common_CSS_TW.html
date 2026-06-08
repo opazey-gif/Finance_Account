@@ -1,0 +1,435 @@
+<!-- ================================================================
+     Common_CSS_TW.html  ·  Tailwind CSS Master Stylesheet
+     สำหรับ Pages ที่ใช้ Tailwind CSS (เช่น finace_dashboard.html)
+     ================================================================ -->
+
+<!-- ===== FONTS ===== -->
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- ===== TAILWIND CSS ===== -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- ===== EXTERNAL ICONS & LIBRARIES ===== -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+<script>
+/* ================================================================
+   TAILWIND CONFIG  ·  Custom Theme + Utilities
+   ================================================================ */
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Prompt', 'Kanit', 'sans-serif'],
+        prompt: ['Prompt', 'sans-serif'],
+        kanit: ['Kanit', 'sans-serif']
+      },
+      colors: {
+        // TIJ Brand Colors
+        tijOrange: '#ED7D31',
+        tijBlue: '#5B9BD5',
+        tijYellow: '#FFC000',
+        
+        // Extended Palette
+        'office-bg': '#F4F7FB',
+        'text-dark': '#334155',
+        'text-light': '#64748b'
+      },
+      spacing: {
+        'safe-top': 'var(--safe-area-inset-top)',
+        'safe-bottom': 'var(--safe-area-inset-bottom)'
+      },
+      animation: {
+        'spin-slow': 'spin 1s linear infinite',
+        'fade-in': 'fadeIn 0.3s ease-in-out',
+        'fade-in-delay': 'fadeIn 0.5s ease-in-out'
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(5px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' }
+        }
+      }
+    }
+  }
+}
+</script>
+
+<style>
+/* ================================================================
+   1.  GLOBAL STYLES
+   ================================================================ */
+* {
+  font-family: 'Prompt', 'Kanit', sans-serif;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+body {
+  background-color: #F4F7FB;
+  color: #334155;
+  overflow-y: scroll;
+}
+
+/* ================================================================
+   2.  UTILITY CLASSES  ·  สำหรับ Tailwind
+   ================================================================ */
+
+/* Glass effect */
+.glass {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+}
+
+.glass-sm {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+}
+
+/* Scrollbar Styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ================================================================
+   3.  NAVIGATION STYLES
+   ================================================================ */
+
+.nav-btn {
+  transition: all 0.2s ease;
+  border-bottom: 3px solid transparent;
+  color: #64748B;
+  font-weight: 500;
+  position: relative;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.nav-btn:hover {
+  color: #ED7D31;
+}
+
+.nav-active {
+  border-bottom-color: #ED7D31;
+  color: #ED7D31;
+  font-weight: 700;
+}
+
+/* ================================================================
+   4.  LOADER & SPINNERS
+   ================================================================ */
+
+.loader {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #ED7D31;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.spinner-border {
+  border: 4px solid rgba(237, 125, 49, 0.2);
+  border-top-color: #ED7D31;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  animation: spin 1s linear infinite;
+}
+
+/* ================================================================
+   5.  CARD STYLES  ·  Income, Expense, Net, Total
+   ================================================================ */
+
+.card-income {
+  background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+  border-left: 5px solid #5B9BD5;
+  border-radius: 0.75rem;
+}
+
+.card-expense {
+  background: linear-gradient(135deg, #ffffff 0%, #fff7ed 100%);
+  border-left: 5px solid #ED7D31;
+  border-radius: 0.75rem;
+}
+
+.card-net {
+  background: linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%);
+  border-left: 5px solid #10B981;
+  border-radius: 0.75rem;
+}
+
+.card-total {
+  background: linear-gradient(135deg, #ffffff 0%, #fefce8 100%);
+  border-left: 5px solid #FFC000;
+  border-radius: 0.75rem;
+}
+
+/* Card hover effect */
+.card-hover {
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* ================================================================
+   6.  FORM ELEMENTS
+   ================================================================ */
+
+input, select, textarea {
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #ED7D31;
+  box-shadow: 0 0 0 3px rgba(237, 125, 49, 0.1);
+}
+
+.date-overlay::-webkit-calendar-picker-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Toggle Switch */
+.toggle-checkbox {
+  right: 4px;
+  z-index: 1;
+  border-color: #e2e8f0;
+  transition: all 0.3s;
+}
+
+.toggle-checkbox:checked {
+  right: 0;
+  border-color: #5B9BD5;
+}
+
+.toggle-label {
+  width: 3.2rem;
+  height: 1.6rem;
+  background-color: #e2e8f0;
+  border-radius: 9999px;
+  transition: all 0.3s;
+}
+
+.toggle-checkbox:checked + .toggle-label {
+  background-color: #5B9BD5;
+}
+
+/* ================================================================
+   7.  BUTTONS & BADGES
+   ================================================================ */
+
+.btn-tij {
+  background-color: #ED7D31;
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-tij:hover {
+  background-color: #d46d1f;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 12px rgba(237, 125, 49, 0.3);
+}
+
+.btn-tij:active {
+  transform: translateY(0);
+}
+
+.btn-tij-outline {
+  border: 2px solid #ED7D31;
+  color: #ED7D31;
+  background-color: transparent;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-tij-outline:hover {
+  background-color: #ED7D31;
+  color: white;
+}
+
+.badge-tij {
+  display: inline-block;
+  background-color: rgba(237, 125, 49, 0.1);
+  color: #ED7D31;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* ================================================================
+   8.  ANIMATIONS
+   ================================================================ */
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.animate-fade-in-delay {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(60px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-in-out;
+}
+
+/* ================================================================
+   9.  TABLES
+   ================================================================ */
+
+.table-custom {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table-custom thead {
+  background-color: #F1F5F9;
+  border-bottom: 2px solid #E2E8F0;
+}
+
+.table-custom thead th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 700;
+  color: #334155;
+}
+
+.table-custom tbody td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.table-custom tbody tr:hover {
+  background-color: rgba(237, 125, 49, 0.03);
+}
+
+/* ================================================================
+   10.  RESPONSIVE UTILITIES
+   ================================================================ */
+
+@media (max-width: 768px) {
+  .nav-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .card-income, .card-expense, .card-net, .card-total {
+    margin-bottom: 1rem;
+  }
+
+  .custom-scrollbar {
+    scroll-behavior: smooth;
+  }
+}
+
+/* ================================================================
+   11.  V-CLOAK (Vue.js)
+   ================================================================ */
+
+[v-cloak] {
+  display: none;
+}
+
+/* ================================================================
+   12.  ACCESSIBILITY
+   ================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus visible for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid #ED7D31;
+  outline-offset: 2px;
+}
+
+/* ================================================================
+   13.  ROLE-BASED VISIBILITY  (ควบคุมด้วย class บน <body>)
+        body.role-admin   → แสดง .admin-only
+        body.role-driver  → แสดง .driver-only
+        body.role-admin แสดง .driver-only ด้วย (admin ทำได้ทุกอย่าง)
+   ================================================================ */
+.admin-only,
+.driver-only {
+  display: none !important;
+}
+
+body.role-admin  .admin-only  { display: inline-flex !important; }
+body.role-admin  .driver-only { display: inline-flex !important; }
+body.role-driver .driver-only { display: inline-flex !important; }
+</style>
