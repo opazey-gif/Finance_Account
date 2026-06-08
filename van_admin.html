@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>จ่ายงานรถตู้</title>
+    
+    <!-- ดึงการตั้งค่า Tailwind CSS และ Fonts จากไฟล์ส่วนกลาง Common_CSS_TW -->
+    <?!= include('Common_CSS_TW'); ?>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
+    
+    <style>
+    body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; }
+    #pageLoader {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.9);
+            z-index: 9999; display: none; align-items: center; justify-content: center; flex-direction: column;
+        }
+    </style>
+</head>
+<body class="text-slate-700 p-4 md:p-8">
+
+    <?!= include('Common_Navbar'); ?>
+
+    <div id="pageLoader">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-orange-500 mb-4"></div>
+        <p class="text-slate-700 font-bold text-lg">กำลังโหลดข้อมูลระบบ...</p>
+    </div>
+
+    <div class="max-w-3xl mx-auto bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100 mt-6">
+        <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+            <span class="bg-orange-100 text-orange-600 p-2 rounded-xl text-lg">🚐</span> 
+            แบบฟอร์มจ่ายงานรถยนต์ / รถตู้ TIJ
+        </h2>
+
+        <div class="space-y-5">
+            <!-- ข้อมูลลูกค้าและจุดรับส่ง -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">ชื่อผู้เดินทาง / ลูกค้า <span class="text-rose-500">*</span></label>
+                    <input type="text" id="v_customer" class="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition" placeholder="ระบุชื่อผู้โดยสารหลัก">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">สถานที่นัดรับ (Pick-up) <span class="text-rose-500">*</span></label>
+                    <input type="text" id="v_pickup" class="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition" placeholder="เช่น อาคาร TIJ ชั้น 1">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">จุดหมายปลายทาง (Destination) <span class="text-rose-500">*</span></label>
+                    <input type="text" id="v_destination" class="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition" placeholder="ระบุสถานที่ปลายทาง">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">วันที่เดินทาง <span class="text-rose-500">*</span></label>
+                    <input type="text" id="v_date" data-type="date" class="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-orange-500 outline-none cursor-pointer" placeholder="เลือกวันที่">
+                </div>
+            </div>
+
+            <!-- ข้อมูลเวลาเชิงลึก -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">⏰ เวลานัดรับเริ่มต้น <span class="text-rose-500">*</span></label>
+                    <input type="text" id="v_time" placeholder="เช่น 08:30" maxlength="5" pattern="[0-9]{2}:[0-9]{2}"
+                        class="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition bg-white">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">⏰ เวลากลับ / ส่งถึงปลายทาง <span class="text-rose-500">*</span></label>
+                    <input type="text" id="v_time_finish" placeholder="เช่น 17:45" maxlength="5" pattern="[0-9]{2}:[0-9]{2}"
+                        class="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition bg-white">
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">ประเภทรถที่ใช้งาน <span class="text-rose-500">*</span></label>
+                    <select id="v_vehicle" onchange="updatePlateOptions()" class="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white">
+                        <option value="รถตู้">🚐 รถตู้</option>
+                        <option value="รถเก๋ง">🚘 รถเก๋ง</option>
+                        <option value="รถกระบะ">🛻 รถกระบะ</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">ทะเบียนรถ <span class="text-rose-500">*</span></label>
+                    <select id="v_plate" class="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white">
+                        <!-- populate by updatePlateOptions() -->
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">มอบหมายพนักงานขับรถ <span class="text-rose-500">*</span></label>
+                    <select id="v_driver" class="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white">
+                        <option value="">-- เลือกคนขับรถ --</option>
+                        <option value="adirek123289@gmail.com">นายอดิเรก มาจังหรีด (พี่เดี่ยว)</option>
+                        <option value="yutthanab143@gmail.com">นายยุทธนา บุญแพทย์ (พี่ต่อ)</option>
+                        <option value="252307denchai@gmail.com">นายเด่นชัย เถื่อนศรี (พี่เด่น)</option>
+                        <option value="pricha.black@gmail.com">นายปรีชา นิศวงค์ (พี่บัง)</option>
+                        <option value="Kittirchtaengngam@gmail.com">นายกิตติรัช แตงงาม (พี่หนึ่ง)</option>
+                        <option value="whansd@gmail.com">Whan (ทดสอบ)</option>
+                    </select>
+                </div>
+                <div></div>
+            </div>
+
+            <!-- ประเภทการเดินทาง (Trip Type) -->
+            <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <label class="block text-sm font-semibold text-slate-700 mb-2">🗺️ ประเภทการเดินทาง <span class="text-rose-500">*</span></label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="tripTypeGroup">
+                    <label class="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50">
+                        <input type="radio" name="v_trip_type" value="ไปส่งอย่างเดียว" class="accent-orange-500 w-4 h-4 shrink-0">
+                        <span class="text-sm font-medium text-slate-700">📤 ไปส่งอย่างเดียว</span>
+                    </label>
+                    <label class="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50">
+                        <input type="radio" name="v_trip_type" value="ไปรับกลับอย่างเดียว" class="accent-orange-500 w-4 h-4 shrink-0">
+                        <span class="text-sm font-medium text-slate-700">📥 ไปรับกลับอย่างเดียว</span>
+                    </label>
+                    <label class="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50">
+                        <input type="radio" name="v_trip_type" value="ไปส่งและรับกลับ" class="accent-orange-500 w-4 h-4 shrink-0">
+                        <span class="text-sm font-medium text-slate-700">🔄 ไปส่งและรับกลับ</span>
+                    </label>
+                    <label class="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50">
+                        <input type="radio" name="v_trip_type" value="ไปส่งแล้วค่อยไปรับกลับ" class="accent-orange-500 w-4 h-4 shrink-0">
+                        <span class="text-sm font-medium text-slate-700">↩️ ไปส่งแล้วค่อยไปรับกลับ</span>
+                    </label>
+                </div>
+            </div>
+
+            <div id="statusMessage" class="hidden"></div>
+
+            <button id="btnSubmit" onclick="assignJob()" class="w-full mt-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold text-lg transition shadow-lg shadow-orange-500/30 flex justify-center items-center gap-2">
+                <i class="fas fa-paper-plane"></i> ยืนยันการจ่ายงาน (Assign Job)
+            </button>
+        </div>
+    </div>
+
+    <!-- ดึง JS หลักมาใช้ -->
+    <?!= include('Common_JS'); ?>
+
+    <script>
+        // ข้อมูลทะเบียนรถจำแนกตามประเภท
+        var VEHICLE_PLATES = {
+            'รถตู้': [
+                { plate: 'ฮม 7061 กรุงเทพมหานคร', label: '🚐 ฮม 7061 กทม. – Ventury 1' },
+                { plate: 'นฆ 8584 กรุงเทพมหานคร', label: '🚐 นฆ 8584 กทม. – Commuter' }
+            ],
+            'รถเก๋ง': [
+                { plate: '5 ขย 1543 กรุงเทพมหานคร', label: '🚘 5 ขย 1543 กทม. – MG' },
+                { plate: '5 ขพ 9069 กรุงเทพมหานคร', label: '🚘 5 ขพ 9069 กทม. – Camry' },
+                { plate: '2 กฌ 8028 กรุงเทพมหานคร', label: '🚘 2 กฌ 8028 กทม. – Fortuner' }
+            ],
+            'รถกระบะ': [
+                { plate: '2 ฒง 9930 กรุงเทพมหานคร', label: '🛻 2 ฒง 9930 กทม. – Revo' }
+            ]
+        };
+
+        function updatePlateOptions() {
+            var type = document.getElementById('v_vehicle').value;
+            var plateSel = document.getElementById('v_plate');
+            plateSel.innerHTML = '';
+            var plates = VEHICLE_PLATES[type] || [];
+            plates.forEach(function(p) {
+                var opt = document.createElement('option');
+                opt.value = p.plate;
+                opt.textContent = p.label;
+                plateSel.appendChild(opt);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            flatpickr("#v_date", {
+                dateFormat: "d/m/Y",
+                locale: "th"
+            });
+            updatePlateOptions(); // populate ครั้งแรก
+
+            // Auto-format เวลา: พิมพ์ตัวเลข 4 ตัวแล้วใส่ : ให้อัตโนมัติ เช่น 0830 → 08:30
+            ['v_time', 'v_time_finish'].forEach(function(id) {
+                const el = document.getElementById(id);
+                el.addEventListener('input', function() {
+                    let val = this.value.replace(/[^0-9]/g, '');
+                    if (val.length >= 3) {
+                        val = val.slice(0, 2) + ':' + val.slice(2, 4);
+                    }
+                    this.value = val;
+                });
+                el.addEventListener('blur', function() {
+                    const match = this.value.match(/^(\d{1,2}):?(\d{2})$/);
+                    if (match) {
+                        const h = parseInt(match[1]);
+                        const m = parseInt(match[2]);
+                        if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
+                            this.value = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+                            this.classList.remove('border-rose-400');
+                            return;
+                        }
+                    }
+                    if (this.value) this.classList.add('border-rose-400');
+                });
+            });
+        });
+
+        function assignJob() {
+            const btn = document.getElementById('btnSubmit');
+            const statusDiv = document.getElementById('statusMessage');
+            
+            const tripTypeEl = document.querySelector('input[name="v_trip_type"]:checked');
+
+            const data = {
+                customerName: document.getElementById('v_customer').value,
+                pickup: document.getElementById('v_pickup').value,
+                destination: document.getElementById('v_destination').value,
+                travelDate: document.getElementById('v_date').value,
+                time: document.getElementById('v_time').value,
+                timeFinish: document.getElementById('v_time_finish').value,
+                vehicleType: document.getElementById('v_vehicle').value,
+                plateNumber: document.getElementById('v_plate').value,
+                driverEmail: document.getElementById('v_driver').value,
+                tripType: tripTypeEl ? tripTypeEl.value : ''
+            };
+
+            // ตรวจสอบความครบถ้วนของข้อมูล
+            if(!data.customerName || !data.pickup || !data.destination || !data.travelDate || !data.time || !data.timeFinish || !data.plateNumber || !data.driverEmail) {
+                statusDiv.style.display = 'block';
+                statusDiv.className = "text-center mt-4 text-rose-500 text-sm font-medium p-3 bg-rose-50 rounded-lg";
+                statusDiv.innerHTML = "⚠️ กรุณากรอกข้อมูลนัดหมายและเลือกเวลารับ-ส่งกลับให้ครบถ้วนทุกช่อง";
+                return;
+            }
+
+            if(!data.tripType) {
+                statusDiv.style.display = 'block';
+                statusDiv.className = "text-center mt-4 text-rose-500 text-sm font-medium p-3 bg-rose-50 rounded-lg";
+                statusDiv.innerHTML = "⚠️ กรุณาเลือกประเภทการเดินทาง";
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = "⏳ กำลังบันทึกและส่งข้อมูลให้คนขับ...";
+            statusDiv.style.display = 'block';
+            statusDiv.className = "text-center mt-4 text-amber-500 text-sm font-medium";
+            statusDiv.innerHTML = "กำลังบันทึกข้อมูลลงระบบ Google Sheets...";
+
+            if (typeof google === 'undefined') {
+                setTimeout(() => {
+                    alert("บันทึกสำเร็จ (Mockup)");
+                    btn.disabled = false;
+                    btn.innerHTML = "🚀 ยืนยันการจ่ายงาน (Assign Job)";
+                    statusDiv.style.display = 'none';
+                }, 1000);
+                return;
+            }
+
+            // ส่งข้อมูลบันทึกใน Google Sheets ผ่านฝั่ง Server
+            google.script.run.withSuccessHandler(res => {
+                Swal.fire('มอบหมายงานรถยนต์สำเร็จ!', res, 'success').then(() => {
+                    navigateTo('van_admin_summary'); 
+                });
+            }).withFailureHandler(err => {
+                statusDiv.className = "text-center mt-4 text-rose-500 text-sm font-medium p-3 bg-rose-50 rounded-lg";
+                statusDiv.innerHTML = "❌ เกิดข้อผิดพลาด: " + err;
+                btn.disabled = false;
+                btn.innerHTML = "🚀 ยืนยันการจ่ายงาน (Assign Job)";
+            }).saveVanJob(data);
+        }
+    </script>
+</body>
+</html>
