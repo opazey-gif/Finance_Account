@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="th" xml:lang="th">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>กรอกข้อมูลวัสดุคงคลัง</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+
+        /* การตั้งค่าให้ Loader บังเต็มหน้าจอ */
+        .loader-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(255, 255, 255, 0.9); /* สีขาวโปร่งใส */
+            z-index: 9999; /* กำหนดให้อยู่บนสุดเสมอ */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.4s ease, visibility 0.4s ease; /* เอฟเฟกต์ตอนจางหาย */
+        }
+
+        /* การสร้างวงกลมหมุนๆ (Spinner) */
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid #f3f3f3; /* สีขอบพื้นหลัง */
+            border-top: 6px solid #0d6efd; /* สีขอบที่วิ่งหมุนๆ (สีน้ำเงิน) */
+            border-radius: 50%;
+            animation: spin 1s linear infinite; /* สั่งให้หมุนต่อเนื่อง */
+        }
+
+        /* อนิเมชันการหมุน */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* คลาสสำหรับซ่อน Loader เมื่อโหลดเสร็จ */
+        .loader-hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        body {
+            background-color: #f8f9fa; /* สีพื้นหลังอ่อนๆ ให้ตัว Card โดดเด่นขึ้น */
+            font-family: 'Kanit', sans-serif;
+        }
+    </style>
+</head>
+<body>
+
+    <?!= include('Common_Navbar'); ?>
+
+
+<div id="pageLoader" class="loader-container">
+    <div class="spinner"></div>
+    <div class="mt-3 fw-bold text-secondary">กำลังโหลดข้อมูล...</div>
+</div>
+    
+
+    <div class="container mb-5">
+        <div class="card shadow border-0 rounded-4">
+            <div class="card-header bg-white border-bottom py-3">
+                <h4 class="mb-0 text-primary">กรอกข้อมูลวัสดุ</h4>
+            </div>
+            <div class="card-body p-4 p-md-5">
+                <h5 class="mb-4 text-secondary border-bottom pb-2">ข้อมูลทั่วไป</h5>
+
+                <div class="row g-4">
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-dark">เลขวัสดุคงคลัง</label>
+                        <input type="text" class="form-control bg-light" placeholder="ระบุเลขวัสดุคงคลัง">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-dark">ชื่อวัสดุคงคลัง</label>
+                        <input type="text" class="form-control" placeholder="ระบุชื่อวัสดุคงคลัง">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-dark">หน่วยนับ</label>
+                        <select class="form-select">
+                            <option selected disabled>เลือกหน่วยนับ...</option>
+                            <option value="เล่ม">เล่ม (เช่น กระดาษโพสอิท)</option>
+                            <option value="แพ็ค">แพ็ค (เช่น สันรูดพลาสติก)</option>
+                            <option value="รีม">รีม (เช่น กระดาษถ่ายเอกสาร)</option>
+                            <option value="ม้วน">ม้วน (เช่น เทปกาว/เทปใส)</option>
+                            <option value="อัน/ชิ้น">อัน / ชิ้น (เช่น เครื่องคิดเลข, คีมถอดลวด)</option>
+                            <option value="กล่อง">กล่อง (เช่น กล่องใส่ลวดเสียบ)</option>
+                            </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-dark">ปีที่ซื้อ</label>
+                        <input type="text" class="form-control" placeholder="เช่น 2567">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-dark">จำนวน</label>
+                        <input type="number" id="quantity" class="form-control" placeholder="ระบุจำนวน">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-dark">ราคา (บาท)</label>
+                        <input type="number" id="price" class="form-control" placeholder="0.00" step="1.00">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-dark">ราคารวมทั้งหมด</label>
+                        <input type="number" id="totalCost" class="form-control bg-body-secondary" placeholder="0.00" step="1.00" readonly>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-dark">วันที่รับเข้าคลัง</label>
+                        <input type="date" class="form-control">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-dark">วันที่หมดอายุการใช้งาน</label>
+                        <input type="date" class="form-control">
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label fw-bold text-dark">หมายเหตุ</label>
+                        <textarea class="form-control" rows="3" placeholder="รายละเอียดเพิ่มเติม..."></textarea>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label fw-bold text-dark">รูปภาพวัสดุ</label>
+                        <input type="file" class="form-control form-control-lg">
+                        <div class="form-text text-muted mt-2">
+                            <i class="fa fa-info-circle me-1"></i> อัปโหลดรูปภาพวัสดุคงคลังเพื่อการตรวจสอบและบันทึกประวัติ (รองรับ .jpg, .png)
+                        </div>
+                    </div>
+
+                    <div class="col-12 text-end mt-5">
+                        <button class="btn btn-outline-secondary px-4 me-2">ยกเลิก</button>
+                        <button class="btn btn-primary px-5 fw-bold shadow-sm">บันทึกข้อมูล</button>
+                    </div>
+
+                </div>
+                </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+
+    window.addEventListener('load', function() {
+        const loader = document.getElementById('pageLoader');
+        // เพิ่มคลาส loader-hidden เพื่อให้ CSS สั่งให้มันจางหายไป
+        loader.classList.add('loader-hidden');
+    });
+
+    const qtyInput = document.getElementById('quantity');
+    const priceInput = document.getElementById('price');
+    const totalInput = document.getElementById('totalCost');
+
+    function calculateTotalCost() {
+        const quantity = parseInt(qtyInput.value) || 0;
+        const price = parseFloat(priceInput.value) || 0;
+        const totalCost = quantity * price;
+        totalInput.value = totalCost.toFixed(2);
+    }
+
+    qtyInput.addEventListener('input', calculateTotalCost);
+    priceInput.addEventListener('input', calculateTotalCost);
+
+    </script>
+
+    <!-- =============== INCLUDE CENTRAL SCRIPTS =============== -->
+    <?!= include('Common_JS'); ?>
+</body>
+</html>
