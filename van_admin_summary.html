@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สรุปข้อมูลการวิ่งงานรถตู้ (Admin)</title>
+    
+    <!-- ดึงการตั้งค่า Tailwind CSS, Fonts และ Icons จากส่วนกลางมาใช้ -->
+    <?!= include('Common_CSS_TW'); ?>
+    
+    <!-- ไลบรารีเฉพาะสำหรับหน้านี้ (กราฟวงกลม) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; }
+        #pageLoader {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.9);
+            z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column;
+            backdrop-filter: blur(4px);
+        }
+        .card-shadow {
+            box-shadow: 0 10px 30px -5px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body class="text-slate-700 pb-12">
+
+    <!-- ดึง Navbar หลักมาใช้ -->
+    <?!= include('Common_Navbar'); ?>
+
+    <!-- หน้าจอโหลด -->
+    <div id="pageLoader">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-orange-500 mb-4"></div>
+        <p class="text-orange-600 font-bold text-lg">กำลังประมวลผลข้อมูลการวิ่งรถ...</p>
+        <p class="text-slate-400 text-sm">กรุณารอสักครู่</p>
+    </div>
+
+    <!-- Modal Export PDF รายไตรมาส -->
+    <div id="exportModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-100">
+            <div class="p-5 border-b border-slate-100 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-t-2xl flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+                        <i class="fas fa-file-pdf text-emerald-600"></i> Export รายงาน PDF
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">เลือกช่วงเดือนที่ต้องการออกรายงาน</p>
+                </div>
+                <button onclick="closeExportModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition">&times;</button>
+            </div>
+            <div class="p-6 space-y-4">
+                <!-- ปี -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">📅 ปี (พ.ศ.)</label>
+                    <select id="exportYear" onchange="updateExportPreview()" class="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white text-sm"></select>
+                </div>
+                <!-- เดือนแรก - เดือนสุดท้าย -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">📆 เดือนแรก</label>
+                        <select id="exportMonthFrom" onchange="updateExportPreview()" class="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white text-sm">
+                            <option value="1">ม.ค. (1)</option>
+                            <option value="2">ก.พ. (2)</option>
+                            <option value="3">มี.ค. (3)</option>
+                            <option value="4">เม.ย. (4)</option>
+                            <option value="5">พ.ค. (5)</option>
+                            <option value="6">มิ.ย. (6)</option>
+                            <option value="7">ก.ค. (7)</option>
+                            <option value="8">ส.ค. (8)</option>
+                            <option value="9">ก.ย. (9)</option>
+                            <option value="10">ต.ค. (10)</option>
+                            <option value="11">พ.ย. (11)</option>
+                            <option value="12">ธ.ค. (12)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">📆 ถึงเดือน</label>
+                        <select id="exportMonthTo" onchange="updateExportPreview()" class="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white text-sm">
+                            <option value="1">ม.ค. (1)</option>
+                            <option value="2">ก.พ. (2)</option>
+                            <option value="3">มี.ค. (3)</option>
+                            <option value="4">เม.ย. (4)</option>
+                            <option value="5">พ.ค. (5)</option>
+                            <option value="6">มิ.ย. (6)</option>
+                            <option value="7">ก.ค. (7)</option>
+                            <option value="8">ส.ค. (8)</option>
+                            <option value="9">ก.ย. (9)</option>
+                            <option value="10">ต.ค. (10)</option>
+                            <option value="11">พ.ย. (11)</option>
+                            <option value="12">ธ.ค. (12)</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- ข้อความเตือนถ้าเดือนกลับหัว -->
+                <div id="monthRangeWarning" class="hidden text-xs text-rose-500 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+                    ⚠️ เดือนแรกต้องไม่มากกว่าเดือนสุดท้าย
+                </div>
+                <!-- Preview -->
+                <div id="exportPreview" class="bg-slate-50 rounded-xl p-4 border border-slate-200 text-sm hidden">
+                    <p class="font-semibold text-slate-700 mb-3">📋 ข้อมูลที่จะ Export</p>
+                    <div id="previewStats" class="space-y-1.5 text-slate-600">
+                        <div class="flex justify-between"><span>ช่วงเวลา:</span><span id="previewPeriod" class="font-semibold text-slate-800"></span></div>
+                        <div class="flex justify-between"><span>จำนวนงานทั้งหมด:</span><span id="previewTotal" class="font-bold text-slate-800"></span></div>
+                        <div class="flex justify-between"><span>งานที่เสร็จสิ้น:</span><span id="previewCompleted" class="font-bold text-green-600"></span></div>
+                        <div class="flex justify-between"><span>ระยะทางรวม:</span><span id="previewDistance" class="font-bold text-purple-600"></span></div>
+                        <div class="flex justify-between"><span>ค่าน้ำมันรวม:</span><span id="previewFuel" class="font-bold text-orange-600"></span></div>
+                    </div>
+                    <div id="previewEmpty" class="text-center text-slate-400 py-2 hidden">
+                        <i class="fas fa-inbox text-xl mb-1 block"></i> ไม่มีข้อมูลในช่วงเวลานี้
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex gap-3">
+                <button onclick="closeExportModal()" class="flex-1 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition">ยกเลิก</button>
+                <button id="btnExport" onclick="confirmExport()" disabled class="flex-1 py-2.5 text-sm font-semibold text-white bg-emerald-500 hover:bg-emerald-600 rounded-xl shadow-md transition flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fas fa-file-pdf"></i> สร้าง PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ส่วนเนื้อหาหลัก -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+        
+        <!-- Header Section -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800 flex items-center gap-3">
+                    <span class="p-2 bg-orange-100 text-orange-600 rounded-xl">📊</span>
+                    สรุปผลงานรถตู้ (ภาพรวมแอดมิน)
+                </h1>
+                <p class="text-slate-500 mt-1">วิเคราะห์สถิติ ค่าน้ำมัน ระยะทาง และประวัติการวิ่งงานของคนขับรถทุกคนในระบบ</p>
+            </div>
+            
+            <div class="flex flex-wrap gap-2 w-full md:w-auto">
+                <button onclick="loadSummaryData()" class="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition font-medium flex items-center gap-2 shadow-sm">
+                    <i class="fas fa-sync-alt"></i> รีเฟรชข้อมูล
+                </button>
+                <button onclick="openExportModal()" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition font-medium shadow-lg shadow-emerald-500/30 flex items-center gap-2">
+                    <i class="fas fa-file-pdf"></i> Export PDF รายไตรมาส
+                </button>
+                <button onclick="navigateTo('van_admin')" class="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition font-medium shadow-lg shadow-orange-500/30 flex items-center gap-2">
+                    <i class="fas fa-plus-circle"></i> จ่ายงานใหม่ให้คนขับ
+                </button>
+            </div>
+        </div>
+
+        <!-- 4 กล่อง KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="kpiContainer">
+            <!-- ข้อมูลจะถูกเติมด้วย JavaScript -->
+        </div>
+
+        <!-- แถบค้นหาและตัวกรองข้อมูล -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-100 card-shadow mb-6 flex flex-col md:flex-row justify-between gap-4 items-center">
+            <div class="relative w-full md:w-72">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                    <i class="fas fa-search"></i>
+                </span>
+                <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="ค้นหา รหัสงาน, คนขับ, ปลายทาง..." class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-sm transition">
+            </div>
+            
+            <div class="flex gap-1.5 overflow-x-auto w-full md:w-auto pb-2 md:pb-0" id="filterTabs">
+                <button onclick="setStatusFilter('ALL')" class="status-tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold bg-orange-500 text-white transition">ทั้งหมด</button>
+                <button onclick="setStatusFilter('Assigned')" class="status-tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 transition">มอบหมายงาน</button>
+                <button onclick="setStatusFilter('Accepted')" class="status-tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 transition">ตอบรับแล้ว</button>
+                <button onclick="setStatusFilter('Completed')" class="status-tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 transition">เสร็จงานแล้ว</button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <!-- กราฟวงกลม -->
+            <div class="lg:col-span-1 bg-white p-6 rounded-2xl border border-slate-100 card-shadow h-fit">
+                <div class="border-b border-slate-100 pb-4 mb-4">
+                    <h3 class="text-lg font-bold text-slate-800">🎯 สัดส่วนงานวิ่งตามคนขับ</h3>
+                    <p class="text-xs text-slate-400 mt-1">สถิติปริมาณงานที่คนขับแต่ละท่านได้รับมอบหมาย</p>
+                </div>
+                <div class="relative flex justify-center items-center py-4">
+                    <canvas id="driverChart" class="max-h-[250px] max-w-[250px]"></canvas>
+                </div>
+            </div>
+
+            <!-- ตารางสรุปงาน -->
+            <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-100 card-shadow overflow-hidden">
+                <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">📋 รายละเอียดประวัติงานวิ่งรถ</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">รวมสถิติการอัปเดต เลขไมล์เริ่มต้น-สิ้นสุด และค่าน้ำมันหลังคนขับปิดงาน</p>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse" id="summaryTable">
+                        <thead>
+                            <tr class="text-slate-500 text-xs uppercase bg-slate-100 border-b border-slate-200">
+                                <th class="p-4 font-semibold">รหัสงาน / วันที่</th>
+                                <th class="p-4 font-semibold">พนักงานขับรถ</th>
+                                <th class="p-4 font-semibold">จุดหมายปลายทาง</th>
+                                <th class="p-4 font-semibold text-right">ระยะทาง (กิโลเมตร)</th>
+                                <th class="p-4 font-semibold text-center">สถานะงาน</th>
+                            </tr>
+                        </thead>
+                        <tbody id="summaryTableBody" class="text-sm divide-y divide-slate-100">
+                            <!-- ข้อมูลจะถูกเติมด้วย JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ดึง JS หลักมาใช้ -->
+    <?!= include('Common_JS'); ?>
+
+    <script>
+        var allJobsData = [];
+        var currentStatusFilter = 'ALL';
+        var chartInstance = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSummaryData();
+        });
+
+        // ฟังก์ชันดึงข้อมูลจากระบบ
+        function loadSummaryData() {
+            document.getElementById('pageLoader').style.display = 'flex';
+            if (typeof google === 'undefined' || !google.script) {
+                // หากรันภายนอกโปรเจกต์ (Mockup test)
+                setTimeout(() => {
+                    const mock = [
+                        { id: 'VAN-260519-001', date: '2026-05-19', customer: 'หมากะแป๋ง', pickup: 'สำนักงาน', time: '09:00', driver: 'yutthanab143@gmail.com', destination: 'สำนักงาน TIJ', distance: 120, fuel: 850, toll: 100, parking: 50, allowance: 300, startMile: 1000, endMile: 1120, note: 'ไม่มี', status: 'Completed' },
+                        { id: 'VAN-260519-002', date: '2026-05-18', customer: 'นาย A', pickup: 'บ้าน', time: '10:30', driver: 'adirek123289@gmail.com', destination: 'กระทรวงยุติธรรม', distance: 45, fuel: 300, toll: 0, parking: 0, allowance: 0, startMile: 2000, endMile: 2045, note: '', status: 'Completed' },
+                        { id: 'VAN-260519-003', date: '2026-05-19', customer: 'นาย B', pickup: 'สนามบิน', time: '13:00', driver: '252307denchai@gmail.com', destination: 'ชลบุรี', distance: 210, fuel: 1400, toll: 150, parking: 0, allowance: 0, startMile: 0, endMile: 0, note: '', status: 'Assigned' }
+                    ];
+                    allJobsData = mock;
+                    renderDashboard(mock);
+                    document.getElementById('pageLoader').style.display = 'none';
+                }, 1000);
+                return;
+            }
+
+            google.script.run
+                .withSuccessHandler(function(data) {
+                    allJobsData = data || [];
+                    renderDashboard(allJobsData);
+                    document.getElementById('pageLoader').style.display = 'none';
+                })
+                .withFailureHandler(function(err) {
+                    console.error('เกิดข้อผิดพลาดในการดึงข้อมูลจากชีต:', err);
+                    Swal.fire('ข้อผิดพลาด', 'ดึงข้อมูลไม่สำเร็จเนื่องจาก: ' + err, 'error');
+                    document.getElementById('pageLoader').style.display = 'none';
+                    allJobsData = [];
+                    renderDashboard([]);
+                })
+                .getAdminVanSummary();
+        }
+
+        // ฟังก์ชันประมวลผลการแสดงผลทั้งหมด
+        function renderDashboard(data) {
+            let totalJobs = data.length;
+            let completedJobs = data.filter(d => d.status === 'Completed').length;
+            let totalDistance = 0;
+            let totalFuel = 0;
+            let driverCount = {};
+            let tbody = '';
+
+            data.forEach(item => {
+                totalDistance += item.distance || 0;
+                totalFuel += item.fuel || 0;
+
+                // นับผลงานเพื่อแยกตามคนขับ (แสดงด้วยชื่อก่อน @ เพื่อความสวยงาม)
+                let driverName = item.driver && item.driver !== '-' ? item.driver.split('@')[0] : 'ไม่ระบุคนขับ';
+                if (!driverCount[driverName]) driverCount[driverName] = 0;
+                driverCount[driverName]++;
+
+                // จัดการโครงสร้างสีของแต่ละสถานะ
+                let statusColor = 'bg-slate-100 text-slate-600';
+                let statusIcon = 'fa-clock';
+                if (item.status === 'Completed') {
+                    statusColor = 'bg-green-100 text-green-700 border border-green-200';
+                    statusIcon = 'fa-check-circle';
+                } else if (item.status === 'Assigned') {
+                    statusColor = 'bg-orange-100 text-orange-700 border border-orange-200';
+                    statusIcon = 'fa-paper-plane';
+                } else if (item.status === 'Accepted') {
+                    statusColor = 'bg-sky-100 text-sky-700 border border-sky-200';
+                    statusIcon = 'fa-car-side';
+                }
+
+                // แปลงรูปแบบวันที่ให้อ่านง่าย
+                let displayDate = item.date;
+                if (item.date instanceof Date) {
+                    displayDate = item.date.toLocaleDateString('th-TH');
+                } else if (typeof item.date === 'string') {
+                    if (item.date.includes('T')) {
+                        displayDate = new Date(item.date).toLocaleDateString('th-TH');
+                    } else if (item.date.includes('-')) {
+                        const parts = item.date.split('-');
+                        if(parts.length === 3) displayDate = `${parts[2]}/${parts[1]}/${parseInt(parts[0])+543}`;
+                    }
+                }
+
+                tbody += `
+                    <tr class="hover:bg-slate-50/50 transition duration-150 cursor-pointer" onclick="viewJobDetail('${item.id}')" data-status="${item.status || ''}">
+                        <td class="p-4 whitespace-nowrap">
+                            <span class="font-bold text-slate-800 block">${item.id || '-'}</span>
+                            <span class="text-xs text-slate-400 flex items-center gap-1 mt-0.5"><i class="far fa-calendar-alt"></i> ${displayDate || '-'}</span>
+                        </td>
+                        <td class="p-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xs">👤</div>
+                                <div>
+                                    <span class="font-semibold text-slate-700 block">${driverName}</span>
+                                    <span class="text-slate-400 text-xxs block">${item.driver || ''}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="p-4 max-w-xs truncate text-slate-600">${item.destination || '-'}</td>
+                        <td class="p-4 font-bold text-slate-700 text-right text-base">${(item.distance || 0).toLocaleString()} กม.</td>
+                        <td class="p-4 text-center">
+                            <span class="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap inline-flex items-center gap-1.5 ${statusColor}">
+                                <i class="fas ${statusIcon}"></i> ${item.status || '-'}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('summaryTableBody').innerHTML = tbody || '<tr><td colspan="5" class="text-center p-12 text-slate-400"><i class="fas fa-inbox text-2xl mb-2 block"></i> ยังไม่มีข้อมูลการวิ่งรถตู้อัปเดตเข้ามาในระบบ</td></tr>';
+
+            // แสดงกล่องสถิติภาพรวม
+            document.getElementById('kpiContainer').innerHTML = `
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 card-shadow border-l-4 border-l-blue-500 flex items-center justify-between">
+                    <div>
+                        <div class="text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wider">จำนวนงานทั้งหมด</div>
+                        <div class="text-3xl font-extrabold text-slate-800">${totalJobs}</div>
+                    </div>
+                    <div class="p-3.5 bg-blue-50 text-blue-500 rounded-xl text-xl"><i class="fas fa-route"></i></div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 card-shadow border-l-4 border-l-green-500 flex items-center justify-between">
+                    <div>
+                        <div class="text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wider">งานที่วิ่งเสร็จสมบูรณ์</div>
+                        <div class="text-3xl font-extrabold text-green-600">${completedJobs}</div>
+                    </div>
+                    <div class="p-3.5 bg-green-50 text-green-500 rounded-xl text-xl"><i class="fas fa-check-double"></i></div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 card-shadow border-l-4 border-l-purple-500 flex items-center justify-between">
+                    <div>
+                        <div class="text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wider">ระยะทางรวมทั้งหมด</div>
+                        <div class="text-3xl font-extrabold text-purple-600">${totalDistance.toLocaleString()} <span class="text-sm font-normal text-slate-500">กม.</span></div>
+                    </div>
+                    <div class="p-3.5 bg-purple-50 text-purple-500 rounded-xl text-xl"><i class="fas fa-tachometer-alt"></i></div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 card-shadow border-l-4 border-l-orange-500 flex items-center justify-between">
+                    <div>
+                        <div class="text-xs text-slate-400 mb-1 font-semibold uppercase tracking-wider">ค่าน้ำมันสะสมรวม</div>
+                        <div class="text-3xl font-extrabold text-orange-600">฿${totalFuel.toLocaleString()}</div>
+                    </div>
+                    <div class="p-3.5 bg-orange-50 text-orange-500 rounded-xl text-xl"><i class="fas fa-gas-pump"></i></div>
+                </div>
+            `;
+
+            // จัดการสร้างกราฟแยกคนขับ
+            createDriverChart(driverCount);
+        }
+
+        // ฟังก์ชันสร้างหรืออัปเดตกราฟ (แก้ไข Syntax Error แล้ว)
+        function createDriverChart(driverCount) {
+            let ctx = document.getElementById('driverChart');
+            if (!ctx) return;
+
+            // ทำลายกราฟเดิมทิ้งเพื่ออัปเดตใหม่ ป้องกันกราฟซ้อนทับกันตอนรีเฟรช
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            if (Object.keys(driverCount).length > 0) {
+                chartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(driverCount),
+                        datasets: [{
+                            data: Object.values(driverCount),
+                            backgroundColor: ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#f43f5e', '#06b6d4', '#eab308'],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '70%',
+                        plugins: {
+                            legend: { 
+                                position: 'bottom', 
+                                labels: { padding: 15, usePointStyle: true, font: { family: 'Prompt', size: 11 } } 
+                            }
+                        }
+                    }
+                });
+            } else {
+                ctx.parentElement.innerHTML = "<div class='text-center text-slate-400 py-12'><i class='fas fa-chart-pie text-3xl mb-2 block'></i> ยังไม่มีข้อมูลสำหรับทำรายงานกราฟ</div>";
+            }
+        }
+
+        // ระบบกรองสิทธิ์งานด้วยแถบค้นหา
+        function filterTable() {
+            let input = document.getElementById("searchInput");
+            let filter = input.value.toUpperCase();
+            let table = document.getElementById("summaryTable");
+            let tr = table.getElementsByTagName("tr");
+
+            for (let i = 1; i < tr.length; i++) {
+                let showRow = false;
+                let tds = tr[i].getElementsByTagName("td");
+                
+                // กรองข้อมูลตามสถานะแท็บ
+                let rowStatus = tr[i].getAttribute("data-status") || '';
+                let matchStatus = (currentStatusFilter === 'ALL' || rowStatus === currentStatusFilter);
+
+                if (tds.length > 0 && matchStatus) {
+                    for (let j = 0; j < tds.length; j++) {
+                        let textValue = tds[j].textContent || tds[j].innerText;
+                        if (textValue.toUpperCase().indexOf(filter) > -1) {
+                            showRow = true;
+                            break;
+                        }
+                    }
+                }
+                tr[i].style.display = showRow ? "" : "none";
+            }
+        }
+
+        // ระบบเลือกกรองสถานะงานแบบปุ่มแท็บ
+        function setStatusFilter(status) {
+            currentStatusFilter = status;
+            
+            // อัปเดตสไตล์ปุ่มแท็บที่กดเลือก
+            let buttons = document.querySelectorAll(".status-tab-btn");
+            buttons.forEach(btn => {
+                btn.className = "status-tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 transition";
+            });
+
+            event.currentTarget.className = "status-tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold bg-orange-500 text-white transition";
+            
+            // สั่งรันฟิลเตอร์ตาราง
+            filterTable();
+        }
+
+        // ฟังก์ชันช่วยแสดงรายละเอียดงานรถตู้เมื่อคลิกแถว (เพิ่มข้อมูลครบถ้วน)
+        function viewJobDetail(jobId) {
+            let job = allJobsData.find(j => j.id === jobId);
+            if (!job) return;
+
+            let displayDate = job.date;
+            if (job.date instanceof Date) displayDate = job.date.toLocaleDateString('th-TH');
+
+            // ปุ่มจัดการงาน แสดงตาม status
+            let deleteBtnHTML = '';
+            if (job.status === 'Assigned') {
+                deleteBtnHTML = `
+                    <div class="mt-4 pt-4 border-t border-slate-100">
+                        <button onclick="deleteJob('${job.id}')" class="w-full py-2.5 bg-white text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-xl font-medium transition flex justify-center items-center gap-2 border border-rose-200 shadow-sm">
+                            <i class="fas fa-trash-alt"></i> ยกเลิกและลบงานวิ่งนี้
+                        </button>
+                    </div>`;
+            } else if (job.status === 'Accepted') {
+                deleteBtnHTML = `
+                    <div class="mt-4 pt-4 border-t border-slate-100 space-y-2">
+                        <button onclick="revertJob('${job.id}')" class="w-full py-2.5 bg-white text-amber-600 hover:bg-amber-50 rounded-xl font-medium transition flex justify-center items-center gap-2 border border-amber-300 shadow-sm">
+                            <i class="fas fa-undo-alt"></i> คืนสถานะเป็น "รอรับงาน" (Assigned)
+                        </button>
+                        <button onclick="deleteJob('${job.id}')" class="w-full py-2.5 bg-white text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-xl font-medium transition flex justify-center items-center gap-2 border border-rose-200 shadow-sm">
+                            <i class="fas fa-trash-alt"></i> ยกเลิกและลบงานวิ่งนี้
+                        </button>
+                    </div>`;
+            }
+
+            Swal.fire({
+                title: `<span class='font-bold text-slate-800 text-xl'>ℹ️ รายละเอียดงาน ${job.id}</span>`,
+                html: `
+                    <div class="text-left text-sm space-y-3 mt-4 max-h-96 overflow-y-auto pr-2">
+                        
+                        <!-- ข้อมูลการเดินทางพื้นฐาน -->
+                        <div class="flex justify-between border-b pb-2"><strong class="text-slate-500">รหัสงาน:</strong> <span class="font-bold text-slate-700">${job.id}</span></div>
+                        <div class="flex justify-between border-b pb-2"><strong class="text-slate-500">ผู้รับผิดชอบ (คนขับ):</strong> <span class="font-medium text-slate-700">${job.driver}</span></div>
+                        <div class="flex justify-between border-b pb-2"><strong class="text-slate-500">ผู้เดินทาง/ลูกค้า:</strong> <span class="font-medium text-slate-700">${job.customer || '-'}</span></div>
+                        
+                        <div class="bg-blue-50/50 p-3 rounded-lg border border-blue-100 space-y-2 mt-2">
+                            <div class="flex justify-between"><strong class="text-blue-700">วันที่เดินทาง:</strong> <span class="font-bold text-blue-900">${displayDate}</span></div>
+                            <div class="flex justify-between"><strong class="text-blue-700">เวลารับ-ส่ง:</strong> <span class="font-bold text-blue-900">${job.time || '-'}</span></div>
+                            <div class="flex justify-between"><strong class="text-blue-700">จุดรับ:</strong> <span class="font-medium text-blue-900">${job.pickup || '-'}</span></div>
+                            <div class="flex justify-between"><strong class="text-blue-700">ปลายทาง:</strong> <span class="font-medium text-blue-900">${job.destination}</span></div>
+                        </div>
+
+                        <!-- ข้อมูลเลขไมล์ -->
+                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-2 mt-2">
+                            <div class="flex justify-between"><strong class="text-slate-500 text-xs">เลขไมล์เริ่มต้น:</strong> <span class="font-bold text-slate-700 text-xs">${job.startMile || 0} กม.</span></div>
+                            <div class="flex justify-between"><strong class="text-slate-500 text-xs">เลขไมล์สิ้นสุด:</strong> <span class="font-bold text-slate-700 text-xs">${job.endMile || 0} กม.</span></div>
+                            <div class="flex justify-between pt-2 border-t border-slate-200"><strong class="text-slate-700">ระยะทางปิดงานสุทธิ:</strong> <span class="font-bold text-orange-600">${job.distance || 0} กม.</span></div>
+                        </div>
+
+                        <!-- สรุปค่าใช้จ่าย -->
+                        <div class="grid grid-cols-2 gap-2 text-xs mt-2">
+                            <div class="bg-slate-50 p-2 rounded-lg border border-slate-100"><strong class="text-slate-500 block mb-0.5">ค่าน้ำมัน:</strong> <span class="font-bold text-slate-700">฿${(job.fuel || 0).toLocaleString()}</span></div>
+                            <div class="bg-slate-50 p-2 rounded-lg border border-slate-100"><strong class="text-slate-500 block mb-0.5">ค่าทางด่วน:</strong> <span class="font-bold text-slate-700">฿${(job.toll || 0).toLocaleString()}</span></div>
+                            <div class="bg-slate-50 p-2 rounded-lg border border-slate-100"><strong class="text-slate-500 block mb-0.5">ค่าที่จอดรถ:</strong> <span class="font-bold text-slate-700">฿${(job.parking || 0).toLocaleString()}</span></div>
+                            <div class="bg-slate-50 p-2 rounded-lg border border-slate-100"><strong class="text-slate-500 block mb-0.5">เบี้ยเลี้ยงคนขับ:</strong> <span class="font-bold text-green-600">฿${(job.allowance || 0).toLocaleString()}</span></div>
+                        </div>
+                        
+                        <!-- หมายเหตุ -->
+                        <div class="flex flex-col bg-slate-50 p-3 rounded-lg border border-slate-100 mt-2">
+                            <strong class="text-slate-500 text-xs mb-1">หมายเหตุของคนขับ / ค่าซ่อมรถ:</strong> 
+                            <span class="text-slate-700 font-medium text-sm whitespace-pre-wrap">${job.note || 'ไม่มีข้อมูลระบุ'}</span>
+                        </div>
+
+                        <div class="flex justify-between pt-2"><strong class="text-slate-500">สถานะระบบ:</strong> <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">${job.status}</span></div>
+                    </div>
+                    ${deleteBtnHTML}
+                `,
+                confirmButtonColor: '#f97316',
+                confirmButtonText: 'ปิดหน้าต่าง'
+            });
+        }
+
+        // ฟังก์ชันคืนสถานะงานกลับเป็น Assigned (สำหรับงานที่ Accepted แล้วแต่ต้องการให้พนักงานปล่อยก่อน)
+        function revertJob(jobId) {
+            Swal.fire({
+                title: 'คืนสถานะงานนี้?',
+                html: `งาน <b>${jobId}</b> จะถูกเปลี่ยนกลับเป็น <b class="text-amber-600">รอรับงาน</b><br><span class="text-sm text-slate-500 mt-1 block">พนักงานจะต้องกดรับงานใหม่อีกครั้ง</span>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#f59e0b',
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: 'ใช่, คืนสถานะ',
+                cancelButtonText: 'ยกเลิก'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById('pageLoader').style.display = 'flex';
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            Swal.fire('คืนสถานะสำเร็จ!', res, 'success');
+                            loadSummaryData();
+                        })
+                        .withFailureHandler(err => {
+                            Swal.fire('ไม่สามารถคืนสถานะได้', err.toString(), 'error');
+                            document.getElementById('pageLoader').style.display = 'none';
+                        })
+                        .revertVanJob(jobId);
+                }
+            });
+        }
+
+        // ฟังก์ชันลบงาน
+        function deleteJob(jobId) {
+            Swal.fire({
+                title: 'ยืนยันการลบงาน?',
+                html: `คุณต้องการลบรายการงาน <b>${jobId}</b> ใช่หรือไม่?<br><span class="text-sm text-rose-500 mt-1 block">หมายเหตุ: งานนี้จะถูกลบออกจากระบบอย่างถาวร</span>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: 'ใช่, ลบงานนี้',
+                cancelButtonText: 'ยกเลิก'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById('pageLoader').style.display = 'flex';
+                    google.script.run
+                        .withSuccessHandler(res => {
+                            Swal.fire('ลบงานสำเร็จ!', res, 'success');
+                            loadSummaryData(); // โหลดข้อมูลตารางใหม่ทันที
+                        })
+                        .withFailureHandler(err => {
+                            Swal.fire('ไม่สามารถลบได้', err.toString(), 'error');
+                            document.getElementById('pageLoader').style.display = 'none';
+                        })
+                        .deleteVanJob(jobId);
+                }
+            });
+        }
+
+        // ========== Export PDF ช่วงเดือนที่เลือกเอง ==========
+        var MONTH_NAMES = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+        function openExportModal() {
+            // สร้าง options ปี จากข้อมูลจริง
+            var yearSel = document.getElementById('exportYear');
+            yearSel.innerHTML = '';
+            var currentYearBE = new Date().getFullYear() + 543;
+            var years = {};
+            allJobsData.forEach(function(job) {
+                if (job.date) {
+                    var p = job.date.toString().split('/');
+                    if (p.length === 3) years[parseInt(p[2])] = true;
+                }
+            });
+            years[currentYearBE] = true;
+            years[currentYearBE - 1] = true;
+            Object.keys(years).map(Number).sort(function(a,b){return b-a;}).forEach(function(y) {
+                var opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = 'พ.ศ. ' + y;
+                if (y === currentYearBE) opt.selected = true;
+                yearSel.appendChild(opt);
+            });
+
+            // default: เดือนแรกของ quarter ปัจจุบัน → เดือนปัจจุบัน
+            var now = new Date();
+            var currentMonth = now.getMonth() + 1;
+            var startOfQ = Math.ceil(currentMonth / 3) * 3 - 2; // เดือนแรกของ quarter
+            document.getElementById('exportMonthFrom').value = startOfQ;
+            document.getElementById('exportMonthTo').value   = currentMonth;
+
+            document.getElementById('exportPreview').classList.add('hidden');
+            document.getElementById('monthRangeWarning').classList.add('hidden');
+            document.getElementById('btnExport').disabled = true;
+
+            var modal = document.getElementById('exportModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            updateExportPreview();
+        }
+
+        function closeExportModal() {
+            var modal = document.getElementById('exportModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function updateExportPreview() {
+            var year      = parseInt(document.getElementById('exportYear').value);
+            var monthFrom = parseInt(document.getElementById('exportMonthFrom').value);
+            var monthTo   = parseInt(document.getElementById('exportMonthTo').value);
+            var warnEl    = document.getElementById('monthRangeWarning');
+            var previewEl = document.getElementById('exportPreview');
+
+            if (monthFrom > monthTo) {
+                warnEl.classList.remove('hidden');
+                previewEl.classList.add('hidden');
+                document.getElementById('btnExport').disabled = true;
+                return;
+            }
+            warnEl.classList.add('hidden');
+
+            // สร้าง array เดือนที่เลือก
+            var months = [];
+            for (var m = monthFrom; m <= monthTo; m++) months.push(m);
+
+            var filtered = allJobsData.filter(function(job) {
+                if (!job.date) return false;
+                var p = job.date.toString().split('/');
+                if (p.length !== 3) return false;
+                return parseInt(p[2]) === year && months.indexOf(parseInt(p[1])) > -1;
+            });
+
+            previewEl.classList.remove('hidden');
+            var emptyEl = document.getElementById('previewEmpty');
+            var statsEl = document.getElementById('previewStats');
+
+            if (filtered.length === 0) {
+                emptyEl.classList.remove('hidden');
+                statsEl.style.display = 'none';
+                document.getElementById('btnExport').disabled = true;
+                return;
+            }
+
+            emptyEl.classList.add('hidden');
+            statsEl.style.display = '';
+
+            var completed = filtered.filter(function(j){return j.status==='Completed';}).length;
+            var totalDist = filtered.reduce(function(s,j){return s+(parseFloat(j.distance)||0);},0);
+            var totalFuel = filtered.reduce(function(s,j){return s+(parseFloat(j.fuel)||0);},0);
+
+            var periodLabel = monthFrom === monthTo
+                ? MONTH_NAMES[monthFrom] + ' ' + year
+                : MONTH_NAMES[monthFrom] + ' – ' + MONTH_NAMES[monthTo] + ' ' + year;
+
+            document.getElementById('previewPeriod').textContent    = periodLabel;
+            document.getElementById('previewTotal').textContent     = filtered.length + ' งาน';
+            document.getElementById('previewCompleted').textContent = completed + ' งาน';
+            document.getElementById('previewDistance').textContent  = totalDist.toLocaleString() + ' กม.';
+            document.getElementById('previewFuel').textContent      = '฿' + totalFuel.toLocaleString();
+            document.getElementById('btnExport').disabled = false;
+        }
+
+        function confirmExport() {
+            var year      = parseInt(document.getElementById('exportYear').value);
+            var monthFrom = parseInt(document.getElementById('exportMonthFrom').value);
+            var monthTo   = parseInt(document.getElementById('exportMonthTo').value);
+            if (!year || monthFrom > monthTo) return;
+
+            var btn = document.getElementById('btnExport');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังสร้าง PDF...';
+
+            var periodLabel = monthFrom === monthTo
+                ? MONTH_NAMES[monthFrom] + ' ' + year
+                : MONTH_NAMES[monthFrom] + ' – ' + MONTH_NAMES[monthTo] + ' ' + year;
+
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-file-pdf"></i> สร้าง PDF';
+                    closeExportModal();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'สร้าง PDF สำเร็จ!',
+                        html: 'รายงานช่วง ' + periodLabel + ' พร้อมแล้ว<br><a href="' + res.url + '" target="_blank" class="text-emerald-600 font-semibold underline mt-2 block">📄 คลิกเพื่อเปิด / ดาวน์โหลด PDF</a>',
+                        confirmButtonColor: '#10b981',
+                        confirmButtonText: 'เปิด PDF'
+                    }).then(function(r){ if(r.isConfirmed) window.open(res.url,'_blank'); });
+                })
+                .withFailureHandler(function(err) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-file-pdf"></i> สร้าง PDF';
+                    Swal.fire('เกิดข้อผิดพลาด', err.toString(), 'error');
+                })
+                .exportVanJobsPDF({ year: year, monthFrom: monthFrom, monthTo: monthTo });
+        }
+    </script>
+</body>
+</html>
